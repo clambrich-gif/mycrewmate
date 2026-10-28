@@ -93,6 +93,9 @@ const Help = lazy(routeLoaders["/hilfe"]);
 const KlemmiFirstLoginPreview = lazy(() => import("@/pages/KlemmiFirstLoginPreview"));
 const KlemmiDashboardPreview = lazy(() => import("@/pages/KlemmiDashboardPreview"));
 const KlemmiPlanLayoutPreview = lazy(() => import("@/pages/KlemmiPlanLayoutPreview"));
+const TeamNoteForwardingPreview = import.meta.env.DEV
+  ? lazy(() => import("@/pages/TeamNoteForwardingPreview"))
+  : null;
 const OfferDemo = lazy(() => import("@/pages/OfferDemo"));
 const PilotHomepageDraft = lazy(() => import("@/pages/PilotHomepageDraft"));
 const ClubDemoLanding = lazy(() => import("@/pages/ClubDemoLanding"));
@@ -107,6 +110,7 @@ const MasterAdminPortal = lazy(() => import("@/pages/MasterAdminPortal"));
 const MfaTestLab = lazy(() => import("@/pages/MfaTestLab"));
 const GameRoot = lazy(() => import("@/pages/GameRoot"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const isLocalStagingBuild = import.meta.env.DEV;
 
 function RouteLoading() {
   return (
@@ -217,6 +221,13 @@ function Router() {
             <KlemmiPlanLayoutPreview />
           </Suspense>
         </Route>
+        {isLocalStagingBuild && TeamNoteForwardingPreview && (
+          <Route path="/_staging/teamnotizen-weiterleiten">
+            <Suspense fallback={<RouteLoading />}>
+              <TeamNoteForwardingPreview />
+            </Suspense>
+          </Route>
+        )}
         <Route path="/_staging/mfa-testlabor">
           <Suspense fallback={<RouteLoading />}>
             <MfaTestLab />

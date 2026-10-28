@@ -87,6 +87,13 @@ import {
   verifyMfaTestSession,
 } from "./mfa-test-lab";
 import {
+  isTeamNoteForwardingPreviewAllowed,
+  TEAM_NOTE_FORWARDING_PREVIEW_CONTACTS,
+  TEAM_NOTE_FORWARDING_PREVIEW_NOTE,
+  teamNotePreviewEmailResult,
+  teamNotePreviewWhatsAppResult,
+} from "./team-note-forwarding-preview";
+import {
   createAllHelperTaskZip,
   createBlankPlanPdf,
   createContactOverviewPdf,
@@ -2149,6 +2156,98 @@ function teamNoteReadIdentity(user: {
 
 export const appRouter = router({
   system: systemRouter,
+  /**
+   * Ausschließlich für die lokale Manus-/Entwicklungsvorschau der noch nicht
+   * produktiven Teamnotiz-Weitergabe. Diese Route kennt nur feste Fakes,
+   * schreibt nichts und importiert bewusst weder Mail- noch WhatsApp-Code.
+   */
+  teamNoteForwardingPreview: router({
+    fixture: publicProcedure.query(({ ctx }) => {
+      if (
+        !isTeamNoteForwardingPreviewAllowed({
+          environment: process.env.NODE_ENV,
+          hostname: ctx.req.hostname,
+        })
+      ) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Die Teamnotiz-Vorschau ist außerhalb der lokalen Vorschau nicht verfügbar.",
+        });
+      }
+      return {
+        contacts: TEAM_NOTE_FORWARDING_PREVIEW_CONTACTS,
+        note: TEAM_NOTE_FORWARDING_PREVIEW_NOTE,
+      } as const;
+    }),
+    simulateEmail: publicProcedure
+      .input(
+        z.object({
+          packageId: z.enum(["event_pass", "light", "pro", "enterprise"]),
+          role: z.enum(["admin", "co_admin", "planner"]),
+          noteStatus: z.enum(["available", "expired"]),
+          recipientIds: z.array(z.string().min(1)).max(20),
+          recipientsConfirmed: z.boolean(),
+        })
+      )
+      .mutation(({ ctx, input }) => {
+        if (
+          !isTeamNoteForwardingPreviewAllowed({
+            environment: process.env.NODE_ENV,
+            hostname: ctx.req.hostname,
+          })
+        ) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Die Teamnotiz-Vorschau ist außerhalb der lokalen Vorschau nicht verfügbar.",
+          });
+        }
+        try {
+          return teamNotePreviewEmailResult(input);
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Die E-Mail-Simulation konnte nicht vorbereitet werden.",
+          });
+        }
+      }),
+    simulateWhatsAppOpen: publicProcedure
+      .input(
+        z.object({
+          packageId: z.enum(["event_pass", "light", "pro", "enterprise"]),
+          role: z.enum(["admin", "co_admin", "planner"]),
+          noteStatus: z.enum(["available", "expired"]),
+          recipientIds: z.array(z.string().min(1)).max(20),
+          recipientId: z.string().min(1),
+        })
+      )
+      .mutation(({ ctx, input }) => {
+        if (
+          !isTeamNoteForwardingPreviewAllowed({
+            environment: process.env.NODE_ENV,
+            hostname: ctx.req.hostname,
+          })
+        ) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Die Teamnotiz-Vorschau ist außerhalb der lokalen Vorschau nicht verfügbar.",
+          });
+        }
+        try {
+          return teamNotePreviewWhatsAppResult(input);
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Die WhatsApp-Simulation konnte nicht vorbereitet werden.",
+          });
+        }
+      }),
+  }),
   /**
    * Ausschließlich anonyme Tagesaggregate der öffentlichen Reichweite. Diese
    * Route akzeptiert keine Besucher- oder Gerätekennung und soll nie einen
