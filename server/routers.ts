@@ -2213,11 +2213,9 @@ async function teamNoteForwardingRecipients(input: {
 function teamNoteForwardingMessage(input: {
   eventName: string;
   senderName: string;
-  senderRole: "user" | "admin";
   message: string;
 }) {
-  const senderRole = input.senderRole === "admin" ? "Administration" : "Planungsteam";
-  return `${input.eventName} – Hinweis von ${input.senderName} (${senderRole}):\n\n${input.message}`;
+  return `📣 MyCrewMate · Team-Notiz\n\nInformation zur Veranstaltung: ${input.eventName}\nWeitergegeben über MyCrewMate von ${input.senderName}\n\n${input.message}`;
 }
 
 /**
@@ -7901,7 +7899,6 @@ export const appRouter = router({
           message: teamNoteForwardingMessage({
             eventName: event.name,
             senderName: note.senderName,
-            senderRole: note.senderRole,
             message: note.message,
           }),
         };

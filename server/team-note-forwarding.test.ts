@@ -235,9 +235,11 @@ describe("Teamnotiz-Weitergabe", () => {
       name: "Anna",
       phone: "491711111111",
     });
-    expect(prepared.message).toContain(
-      "Bitte die Lieferzeiten heute noch abstimmen."
+    expect(prepared.message).toBe(
+      "📣 MyCrewMate · Team-Notiz\n\nInformation zur Veranstaltung: MyEifelRide\nWeitergegeben über MyCrewMate von Anne Veling\n\nBitte die Lieferzeiten heute noch abstimmen."
     );
+    expect(prepared.message).not.toContain("Planungsteam");
+    expect(prepared.message).not.toContain("Administration");
     expect(db.recordTeamNoteForwardingResult).toHaveBeenCalledWith(
       expect.objectContaining({ channel: "whatsapp", result: "prepared" })
     );

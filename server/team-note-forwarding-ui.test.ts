@@ -68,6 +68,9 @@ describe("Teamnotiz-Weitergabe – Produktoberfläche", () => {
     );
     expect(router).toContain("forwardEmail: eventChatForwardingProcedure");
     expect(router).toContain("prepareWhatsApp: eventChatForwardingProcedure");
+    expect(router).toContain("📣 MyCrewMate · Team-Notiz");
+    expect(router).toContain("Information zur Veranstaltung:");
+    expect(router).toContain("Weitergegeben über MyCrewMate von");
     expect(packages).toContain('"team_note_forwarding"');
     expect(packages).toContain("team_note_forwarding: false");
   });
