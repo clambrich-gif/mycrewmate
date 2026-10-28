@@ -96,9 +96,16 @@ describe("Mail-Service (Hetzner SMTP & Transactional)", () => {
     expect(rendered.subject).toBe("[MyEifelRide <2027>] Aktuelle Team-Notiz");
     expect(rendered.text).toContain("Anne & Team (Planungsteam)");
     expect(rendered.text).toContain("Strecke <Nord> bitte prüfen");
+    expect(rendered.text).toContain(
+      "Bitte antworten Sie nicht auf diese E-Mail, Antworten werden nicht gelesen und nicht weitergeleitet."
+    );
+    expect(rendered.text).not.toContain("Vereinsantwortadresse");
     expect(rendered.html).toContain("MyEifelRide &lt;2027&gt;");
     expect(rendered.html).toContain("Anne &amp; Team");
     expect(rendered.html).toContain("Strecke &lt;Nord&gt; bitte prüfen &amp; Rückmeldung geben.");
+    expect(rendered.html).toContain(
+      "Bitte antworten Sie nicht auf diese E-Mail, Antworten werden nicht gelesen und nicht weitergeleitet."
+    );
   });
 
   it("rendert Pilotanfrage und Eingangsbestätigung mit allen Rückrufdaten", () => {

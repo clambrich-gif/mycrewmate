@@ -190,6 +190,7 @@ describe("Teamnotiz-Weitergabe", () => {
       expect.objectContaining({
         to: ["anna@verein.de"],
         subject: "[MyEifelRide] Aktuelle Team-Notiz",
+        replyTo: '"MyCrewMate – keine Antwort" <no-reply@mycrewmate.de>',
       })
     );
     expect(result).toEqual({

@@ -7826,6 +7826,7 @@ export const appRouter = router({
         try {
           const delivery = await sendTransactionalEmail({
             to: recipients.destinations.map(recipient => recipient.value),
+            replyTo: '"MyCrewMate – keine Antwort" <no-reply@mycrewmate.de>',
             ...email,
           });
           status = delivery.success

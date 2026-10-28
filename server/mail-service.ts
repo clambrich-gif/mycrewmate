@@ -70,6 +70,8 @@ export interface SendMailOptions {
   subject: string;
   text: string;
   html?: string;
+  /** Überschreibt nur für diesen Auftrag die allgemeine Support-Antwortadresse. */
+  replyTo?: string;
   attachments?: Array<{
     filename: string;
     content: Buffer;
@@ -94,7 +96,11 @@ export async function sendTransactionalEmail(options: SendMailOptions): Promise<
 
   const info = await transporter.sendMail({
     from: `"${config.fromName}" <${config.fromEmail}>`,
-    replyTo: config.replyToEmail ? `"${config.fromName} Support" <${config.replyToEmail}>` : undefined,
+    replyTo:
+      options.replyTo ??
+      (config.replyToEmail
+        ? `"${config.fromName} Support" <${config.replyToEmail}>`
+        : undefined),
     to: options.to,
     subject: options.subject,
     text: options.text,
@@ -215,7 +221,7 @@ Von: ${senderName} (${senderRole})
 
 ${params.message.trim()}
 
-Diese E-Mail wurde über MyCrewMate im Namen des Planungsteams weitergegeben. Antworten werden an die in MyCrewMate hinterlegte Vereinsantwortadresse geleitet.`;
+Diese E-Mail wurde über MyCrewMate im Namen des Planungsteams weitergegeben. Bitte antworten Sie nicht auf diese E-Mail, Antworten werden nicht gelesen und nicht weitergeleitet.`;
   const html = `<!doctype html>
 <html lang="de"><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#0f172a;">
   <div style="max-width:640px;margin:24px auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
@@ -226,7 +232,7 @@ Diese E-Mail wurde über MyCrewMate im Namen des Planungsteams weitergegeben. An
     <div style="padding:26px;">
       <p style="margin:0 0 18px;font-size:14px;color:#475569;">Weitergegeben von <strong style="color:#0f172a;">${escapeEmailHtml(senderName)}</strong> · ${escapeEmailHtml(senderRole)}</p>
       <div style="white-space:pre-wrap;border-left:4px solid #2563eb;background:#f8fafc;padding:16px 18px;border-radius:4px;font-size:16px;line-height:1.55;color:#0f172a;">${escapeEmailHtml(params.message.trim())}</div>
-      <p style="margin:22px 0 0;font-size:12px;line-height:1.5;color:#64748b;">Diese E-Mail wurde über MyCrewMate im Namen des Planungsteams weitergegeben. Antworten werden an die hinterlegte Vereinsantwortadresse geleitet.</p>
+      <p style="margin:22px 0 0;font-size:12px;line-height:1.5;color:#64748b;">Diese E-Mail wurde über MyCrewMate im Namen des Planungsteams weitergegeben. Bitte antworten Sie nicht auf diese E-Mail, Antworten werden nicht gelesen und nicht weitergeleitet.</p>
     </div>
   </div>
 </body></html>`;
