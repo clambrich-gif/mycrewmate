@@ -29,7 +29,14 @@ describe("Teamnotiz-Weitergabe – Produktoberfläche", () => {
     expect(dialog).not.toContain("Ich bestätige die sichtbare Empfängerliste");
     expect(dialog).not.toContain("recipientsConfirmed");
     expect(dialog).toContain('channel === "email" ? "Abbrechen" : "Fertig"');
-    expect(dialog).toContain("Senden");
+    expect(dialog).toContain("const canSendEmail");
+    expect(dialog).toContain("const emailSendLabel");
+    expect(dialog).toContain("E-Mail an ${selectedEligibleContacts.length}");
+    expect(dialog).toContain("mt-auto min-h-24 w-full");
+    expect(dialog).toContain("border-slate-700 bg-slate-700");
+    expect(dialog).toContain("border-slate-200 bg-slate-100");
+    expect(dialog).toContain("disabled={!canSendEmail}");
+    expect(dialog).not.toContain("emailMutation.isPending ||\n                emailResult");
     expect(dialog).toContain(
       "Versandweg geändert – bitte Empfänger neu wählen."
     );

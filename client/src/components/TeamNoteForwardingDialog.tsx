@@ -245,6 +245,20 @@ export function TeamNoteForwardingDialog({
     });
   };
 
+  const canSendEmail =
+    selectedEligibleContacts.length > 0 &&
+    recipientsQuery.data?.emailDeliveryConfigured === true &&
+    !emailMutation.isPending &&
+    emailResult?.status !== "accepted" &&
+    emailResult?.status !== "already_started";
+
+  const emailSendLabel = emailMutation.isPending
+    ? "E-Mail wird gesendet …"
+    : emailResult?.status === "accepted" ||
+        emailResult?.status === "already_started"
+      ? "E-Mail-Auftrag bereits ausgelöst"
+      : `E-Mail an ${selectedEligibleContacts.length} Ansprechpartner senden`;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -432,13 +446,13 @@ export function TeamNoteForwardingDialog({
                 </div>
               </section>
 
-              <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+              <section className="flex min-w-0 flex-col rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                 <h3 className="text-sm font-bold text-slate-900">
                   {channel === "email"
                     ? "E-Mail-Vorschau"
                     : "WhatsApp-Schritte"}
                 </h3>
-                <div className="mt-3 space-y-3">
+                <div className="mt-3 flex flex-1 flex-col gap-3">
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-700">
                     <p>
                       <strong>Veranstaltung:</strong> {serverNote.eventName}
@@ -525,6 +539,25 @@ export function TeamNoteForwardingDialog({
                             "Für diese Team-Notiz wurde bereits ein E-Mail-Auftrag vorgemerkt. Er wird nicht doppelt ausgelöst."}
                         </div>
                       )}
+                      <Button
+                        type="button"
+                        size="lg"
+                        className={cn(
+                          "mt-auto min-h-24 w-full rounded-xl border px-6 text-base font-bold shadow-none transition-all disabled:opacity-100",
+                          canSendEmail
+                            ? "border-slate-700 bg-slate-700 text-white shadow-sm hover:bg-slate-800 active:scale-[0.98]"
+                            : "border-slate-200 bg-slate-100 text-slate-400 hover:bg-slate-100"
+                        )}
+                        disabled={!canSendEmail}
+                        onClick={sendEmail}
+                      >
+                        {emailMutation.isPending ? (
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        ) : (
+                          <Mail className="h-6 w-6" />
+                        )}
+                        {emailSendLabel}
+                      </Button>
                     </>
                   ) : (
                     <>
@@ -597,30 +630,10 @@ export function TeamNoteForwardingDialog({
             </div>
           )}
         </div>
-        <div className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3 sm:flex-row sm:justify-end sm:px-6">
+        <div className="flex justify-end border-t border-slate-200 bg-slate-50 px-5 py-3 sm:px-6">
           <Button type="button" variant="outline" onClick={close}>
             {channel === "email" ? "Abbrechen" : "Fertig"}
           </Button>
-          {channel === "email" && (
-            <Button
-              type="button"
-              disabled={
-                selectedEligibleContacts.length === 0 ||
-                !recipientsQuery.data?.emailDeliveryConfigured ||
-                emailMutation.isPending ||
-                emailResult?.status === "accepted" ||
-                emailResult?.status === "already_started"
-              }
-              onClick={sendEmail}
-            >
-              {emailMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Mail className="mr-2 h-4 w-4" />
-              )}
-              Senden
-            </Button>
-          )}
         </div>
       </DialogContent>
     </Dialog>
