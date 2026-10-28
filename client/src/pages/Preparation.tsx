@@ -62,6 +62,10 @@ import { useViewMode } from "@/hooks/useViewMode";
 import { LocationMapLink } from "@/components/LocationMapLink";
 import { getKlemmiLocationGuideCopy } from "@/lib/klemmi-location-guide";
 import {
+  deriveOwnDirectHelperIds,
+  matchesMyDirectTaskAssignment,
+} from "@/lib/personal-task-filter";
+import {
   MY_TASKS_QUERY_KEY,
   parseMyTasksFilter,
   parseTaskStatusFilter,
@@ -499,18 +503,8 @@ export default function Preparation() {
     [responsibleContacts, currentUserName]
   );
   const ownHelperIds = useMemo(
-    () =>
-      new Set(
-        helpers
-          .filter(
-            helper =>
-              normalizedPersonName(helper.name) === currentUserName ||
-              (typeof helper.contactId === "number" &&
-                ownContactIds.has(helper.contactId))
-          )
-          .map(helper => helper.id)
-      ),
-    [helpers, currentUserName, ownContactIds]
+    () => deriveOwnDirectHelperIds(helpers, user?.name),
+    [helpers, user?.name]
   );
   const canShowMyTasks =
     !isEventPass && (ownContactIds.size > 0 || ownHelperIds.size > 0);
@@ -591,11 +585,11 @@ export default function Preparation() {
         if (
           !isEventPass &&
           myTasksOnly &&
-          !(
-            (typeof row.contactId === "number" && ownContactIds.has(row.contactId)) ||
-            (typeof row.helperId === "number" && ownHelperIds.has(row.helperId)) ||
-            (row.helperIds ?? []).some(helperId => ownHelperIds.has(helperId))
-          )
+          !matchesMyDirectTaskAssignment({
+            task: row,
+            ownContactIds,
+            ownHelperIds,
+          })
         ) {
           return false;
         }

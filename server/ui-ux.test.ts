@@ -1041,6 +1041,17 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("matchesMyScheduleAssignment({");
   });
 
+  it("grenzt Vor- und Nachbereitungsaufgaben strikt von betreuten Helfern ab", () => {
+    const preparation = source("client/src/pages/Preparation.tsx");
+    const postprocessing = source("client/src/pages/PostProcessing.tsx");
+
+    for (const page of [preparation, postprocessing]) {
+      expect(page).toContain("deriveOwnDirectHelperIds");
+      expect(page).toContain("matchesMyDirectTaskAssignment");
+      expect(page).not.toContain("ownContactIds.has(helper.contactId)");
+    }
+  });
+
   it("hält mobile Formulare und Aktionen bei 44px und 16px und macht Helferchips per Tastatur erreichbar", () => {
     const input = source("client/src/components/ui/input.tsx");
     const button = source("client/src/components/ui/button.tsx");

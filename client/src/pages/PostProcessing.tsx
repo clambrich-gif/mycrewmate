@@ -45,6 +45,10 @@ import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { useViewMode } from "@/hooks/useViewMode";
 import { getKlemmiLocationGuideCopy } from "@/lib/klemmi-location-guide";
 import {
+  deriveOwnDirectHelperIds,
+  matchesMyDirectTaskAssignment,
+} from "@/lib/personal-task-filter";
+import {
   MY_TASKS_QUERY_KEY,
   parseMyTasksFilter,
 } from "@/lib/dashboard-target-filter";
@@ -446,18 +450,8 @@ export default function PostProcessing() {
     [contacts, currentUserName]
   );
   const ownHelperIds = useMemo(
-    () =>
-      new Set(
-        helpers
-          .filter(
-            helper =>
-              normalizedPersonName(helper.name) === currentUserName ||
-              (typeof helper.contactId === "number" &&
-                ownContactIds.has(helper.contactId))
-          )
-          .map(helper => helper.id)
-      ),
-    [helpers, currentUserName, ownContactIds]
+    () => deriveOwnDirectHelperIds(helpers, user?.name),
+    [helpers, user?.name]
   );
   const canShowMyTasks = ownContactIds.size > 0 || ownHelperIds.size > 0;
   const setMyTasksFilter = (enabled: boolean) => {
@@ -527,11 +521,11 @@ export default function PostProcessing() {
       }
       if (
         myTasksOnly &&
-        !(
-          (typeof task.contactId === "number" && ownContactIds.has(task.contactId)) ||
-          (typeof task.helperId === "number" && ownHelperIds.has(task.helperId)) ||
-          (task.helperIds ?? []).some(helperId => ownHelperIds.has(helperId))
-        )
+        !matchesMyDirectTaskAssignment({
+          task,
+          ownContactIds,
+          ownHelperIds,
+        })
       ) {
         return false;
       }
