@@ -26,12 +26,17 @@ describe("Teamnotiz-Weitergabe – Produktoberfläche", () => {
     expect(dialog).toContain("Sichtbare An:-Liste");
     expect(dialog).toContain("[{serverNote.eventName}]");
     expect(dialog).toContain("Aktuelle Team-Notiz");
-    expect(dialog).toContain("Ich bestätige die sichtbare Empfängerliste");
+    expect(dialog).not.toContain("Ich bestätige die sichtbare Empfängerliste");
+    expect(dialog).not.toContain("recipientsConfirmed");
+    expect(dialog).toContain('channel === "email" ? "Abbrechen" : "Fertig"');
+    expect(dialog).toContain("Senden");
     expect(dialog).toContain(
       "Versandweg geändert – bitte Empfänger neu wählen."
     );
     expect(dialog).toContain("WhatsApp für {nextWhatsAppContact.name} öffnen");
     expect(dialog).toContain("about:blank");
+    expect(dialog).not.toContain('"noopener,noreferrer"');
+    expect(dialog).toContain("chatWindow.opener = null");
     expect(dialog).toContain("chatWindow.location.replace(url)");
     expect(dialog).toContain("WhatsApp selbst gesendet.");
     expect(dialog).not.toContain("window.open(url");

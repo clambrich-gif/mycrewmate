@@ -61,7 +61,6 @@ export function TeamNoteForwardingDialog({
   const [channel, setChannel] = useState<ForwardingChannel>("email");
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [recipientsConfirmed, setRecipientsConfirmed] = useState(false);
   const [channelChangedNotice, setChannelChangedNotice] = useState(false);
   const [emailResult, setEmailResult] = useState<EmailResult | null>(null);
   const [openedWhatsAppContactIds, setOpenedWhatsAppContactIds] = useState<
@@ -146,14 +145,12 @@ export function TeamNoteForwardingDialog({
     setChannel("email");
     setSearch("");
     setSelectedIds([]);
-    setRecipientsConfirmed(false);
     setChannelChangedNotice(false);
     setEmailResult(null);
     setOpenedWhatsAppContactIds([]);
   }, [note?.id]);
 
   useEffect(() => {
-    setRecipientsConfirmed(false);
     setEmailResult(null);
     setOpenedWhatsAppContactIds([]);
   }, [selectedIds]);
@@ -164,7 +161,6 @@ export function TeamNoteForwardingDialog({
     if (nextChannel === channel) return;
     setChannel(nextChannel);
     setSelectedIds([]);
-    setRecipientsConfirmed(false);
     setEmailResult(null);
     setOpenedWhatsAppContactIds([]);
     setChannelChangedNotice(true);
@@ -196,11 +192,7 @@ export function TeamNoteForwardingDialog({
     if (!note || !nextWhatsAppContact || whatsAppMutation.isPending) return;
     // Das leere Fenster entsteht direkt durch den Nutzerklick. Nach der
     // serverseitigen Freigabe wird nur seine URL ersetzt – popupblocker-sicher.
-    const chatWindow = window.open(
-      "about:blank",
-      "_blank",
-      "noopener,noreferrer"
-    );
+    const chatWindow = window.open("about:blank", "_blank");
     if (!chatWindow) {
       toast.error(
         "Der Browser hat das WhatsApp-Fenster blockiert. Bitte Pop-ups für MyCrewMate erlauben."
@@ -215,6 +207,17 @@ export function TeamNoteForwardingDialog({
             result.message,
             result.recipient.phone
           );
+          if (chatWindow.closed) {
+            toast.error(
+              "Das WhatsApp-Fenster wurde geschlossen. Bitte den Kontakt erneut öffnen."
+            );
+            return;
+          }
+          // Das Fenster wird ohne noopener geöffnet, damit die nach der
+          // Serverprüfung nötige Weiterleitung zuverlässig funktioniert.
+          // Vor dem Verlassen der neutralen Leerseite lösen wir die Verbindung
+          // zur App wieder, damit WhatsApp keinen Zugriff auf MyCrewMate erhält.
+          chatWindow.opener = null;
           chatWindow.location.replace(url);
           setOpenedWhatsAppContactIds(current => [
             ...current,
@@ -235,12 +238,10 @@ export function TeamNoteForwardingDialog({
   };
 
   const sendEmail = () => {
-    if (!note || !recipientsConfirmed || selectedEligibleContacts.length === 0)
-      return;
+    if (!note || selectedEligibleContacts.length === 0) return;
     emailMutation.mutate({
       noteId: note.id,
       contactIds: selectedEligibleContacts.map(contact => contact.id),
-      recipientsConfirmed: true,
     });
   };
 
@@ -503,19 +504,6 @@ export function TeamNoteForwardingDialog({
                           kein Versandauftrag ausgelöst.
                         </div>
                       )}
-                      <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 p-3 text-sm text-slate-700">
-                        <Checkbox
-                          checked={recipientsConfirmed}
-                          onCheckedChange={checked =>
-                            setRecipientsConfirmed(checked === true)
-                          }
-                          className="mt-0.5"
-                        />
-                        <span>
-                          Ich bestätige die sichtbare Empfängerliste und die
-                          externe Weitergabe dieser Team-Notiz.
-                        </span>
-                      </label>
                       {emailResult && (
                         <div
                           className={cn(
@@ -537,27 +525,6 @@ export function TeamNoteForwardingDialog({
                             "Für diese Team-Notiz wurde bereits ein E-Mail-Auftrag vorgemerkt. Er wird nicht doppelt ausgelöst."}
                         </div>
                       )}
-                      <Button
-                        type="button"
-                        className="w-full"
-                        disabled={
-                          selectedEligibleContacts.length === 0 ||
-                          !recipientsConfirmed ||
-                          !recipientsQuery.data?.emailDeliveryConfigured ||
-                          emailMutation.isPending ||
-                          emailResult?.status === "accepted" ||
-                          emailResult?.status === "already_started"
-                        }
-                        onClick={sendEmail}
-                      >
-                        {emailMutation.isPending ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Mail className="mr-2 h-4 w-4" />
-                        )}
-                        E-Mail an {selectedEligibleContacts.length}{" "}
-                        Ansprechpartner senden
-                      </Button>
                     </>
                   ) : (
                     <>
@@ -630,10 +597,30 @@ export function TeamNoteForwardingDialog({
             </div>
           )}
         </div>
-        <div className="flex justify-end border-t border-slate-200 bg-slate-50 px-5 py-3 sm:px-6">
+        <div className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3 sm:flex-row sm:justify-end sm:px-6">
           <Button type="button" variant="outline" onClick={close}>
-            Fertig
+            {channel === "email" ? "Abbrechen" : "Fertig"}
           </Button>
+          {channel === "email" && (
+            <Button
+              type="button"
+              disabled={
+                selectedEligibleContacts.length === 0 ||
+                !recipientsQuery.data?.emailDeliveryConfigured ||
+                emailMutation.isPending ||
+                emailResult?.status === "accepted" ||
+                emailResult?.status === "already_started"
+              }
+              onClick={sendEmail}
+            >
+              {emailMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Mail className="mr-2 h-4 w-4" />
+              )}
+              Senden
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

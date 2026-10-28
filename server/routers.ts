@@ -7763,7 +7763,6 @@ export const appRouter = router({
         z.object({
           noteId: z.number().int().positive(),
           contactIds: z.array(z.number().int().positive()).min(1).max(500),
-          recipientsConfirmed: z.literal(true),
         })
       )
       .mutation(async ({ ctx, input }) => {

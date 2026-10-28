@@ -169,7 +169,7 @@ describe("Teamnotiz-Weitergabe", () => {
     ).rejects.toThrow("Team-Notizen können nur von Administratoren");
   });
 
-  it("sendet genau einen bestätigten Mailauftrag an eindeutige sichtbare An-Adressen und protokolliert ohne Text", async () => {
+  it("sendet genau einen Mailauftrag an eindeutige sichtbare An-Adressen und protokolliert ohne Text", async () => {
     const claim = vi
       .spyOn(db, "claimTeamNoteEmailForwarding")
       .mockResolvedValue({
@@ -183,7 +183,6 @@ describe("Teamnotiz-Weitergabe", () => {
     const result = await adminCaller().notes.forwardEmail({
       noteId: 31,
       contactIds: [11, 12],
-      recipientsConfirmed: true,
     });
 
     expect(claim).toHaveBeenCalledWith(expect.objectContaining({ noteId: 31 }));
@@ -218,7 +217,6 @@ describe("Teamnotiz-Weitergabe", () => {
       adminCaller().notes.forwardEmail({
         noteId: 31,
         contactIds: [11],
-        recipientsConfirmed: true,
       })
     ).resolves.toEqual({
       status: "already_started",
@@ -257,7 +255,6 @@ describe("Teamnotiz-Weitergabe", () => {
       adminCaller().notes.forwardEmail({
         noteId: 999,
         contactIds: [11],
-        recipientsConfirmed: true,
       })
     ).rejects.toThrow("nicht mehr verfügbar");
   });
