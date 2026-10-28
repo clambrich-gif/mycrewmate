@@ -2696,6 +2696,7 @@ export function comparableProjectContent(
     ]),
     post: withoutTaskIds(document.post as Array<Record<string, unknown>>, [
       "contactSourceId",
+      "locationSourceId",
       "helperSourceId",
     ]),
     materials: withoutIds(

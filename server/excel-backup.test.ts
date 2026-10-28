@@ -272,8 +272,8 @@ describe("Excel-Datensicherung", () => {
       category: "Abbau",
       task: "Material einlagern",
       dueText: "Sonntag",
-      locationSourceId: null,
-      locationName: "",
+      locationSourceId: 41,
+      locationName: "Mosbruch",
       contactSourceId: 10,
       contactName: "Chris Leitung",
       helperSourceId: 22,
@@ -296,13 +296,17 @@ describe("Excel-Datensicherung", () => {
       { helperSourceId: 1001, helperName: "Bea Beispiel" },
       { helperSourceId: 1002, helperName: "Cem Beispiel" },
     ];
+    restored.post[0].locationSourceId = 1003;
 
     expect(comparableProjectContent(restored)).toEqual(
       comparableProjectContent(current)
     );
-    expect(diffDocuments(current, restored)).toEqual([]);
 
-    const changedHelper = structuredClone(restored);
+    const importPreview = structuredClone(restored);
+    importPreview.post[0].locationSourceId = null;
+    expect(diffDocuments(current, importPreview)).toEqual([]);
+
+    const changedHelper = structuredClone(importPreview);
     changedHelper.prep[0].helperSlots[1].helperName = "Falscher Helfer";
     expect(comparableProjectContent(changedHelper)).not.toEqual(
       comparableProjectContent(current)
@@ -314,6 +318,12 @@ describe("Excel-Datensicherung", () => {
           fields: ["helperSlots"],
         }),
       ])
+    );
+
+    const changedLocation = structuredClone(importPreview);
+    changedLocation.post[0].locationName = "Laubach";
+    expect(comparableProjectContent(changedLocation)).not.toEqual(
+      comparableProjectContent(current)
     );
   });
 
