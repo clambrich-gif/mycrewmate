@@ -34,6 +34,7 @@ const CAPABILITY_LABEL: Record<ProductCapability, string> = {
   pdf: "PDF-Ausgabe",
   locations: "Orte & Standorte",
   chat: "Team-Chat",
+  team_note_forwarding: "Team-Notizen an Ansprechpartner weitergeben",
   personal_accesses: "Persönliche Teamzugänge",
   excel: "Excel-Import und -Export",
   project_backup: "Projektstände und Sicherungen",

@@ -8,6 +8,7 @@ import {
   renderPilotInquiryNotificationEmail,
   renderPilotEndEmail,
   renderProductExpiryReminderEmail,
+  renderTeamNoteForwardingEmail,
   renderTenantAccessStatusEmail,
   sendTransactionalEmail,
 } from "./mail-service";
@@ -82,6 +83,22 @@ describe("Mail-Service (Hetzner SMTP & Transactional)", () => {
     expect(rendered.text).toContain("Planungsdaten bleiben selbstverständlich erhalten");
     expect(rendered.html).toContain("06.10.2026");
     expect(rendered.html).toContain("Testzugang");
+  });
+
+  it("rendert eine sichere Teamnotiz-Mail mit Event-, Verfasser- und Textbezug", () => {
+    const rendered = renderTeamNoteForwardingEmail({
+      eventName: "MyEifelRide <2027>",
+      senderName: "Anne & Team",
+      senderRole: "user",
+      message: "Strecke <Nord> bitte prüfen & Rückmeldung geben.",
+    });
+
+    expect(rendered.subject).toBe("[MyEifelRide <2027>] Aktuelle Team-Notiz");
+    expect(rendered.text).toContain("Anne & Team (Planungsteam)");
+    expect(rendered.text).toContain("Strecke <Nord> bitte prüfen");
+    expect(rendered.html).toContain("MyEifelRide &lt;2027&gt;");
+    expect(rendered.html).toContain("Anne &amp; Team");
+    expect(rendered.html).toContain("Strecke &lt;Nord&gt; bitte prüfen &amp; Rückmeldung geben.");
   });
 
   it("rendert Pilotanfrage und Eingangsbestätigung mit allen Rückrufdaten", () => {

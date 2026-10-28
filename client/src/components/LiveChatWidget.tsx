@@ -4,7 +4,14 @@ import {
   Badge,
 } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
+import { TeamNoteForwardingDialog } from "@/components/TeamNoteForwardingDialog";
 import { useEventYear } from "@/contexts/YearContext";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { trpc } from "@/lib/trpc";
@@ -17,6 +24,7 @@ import {
   Maximize2,
   MessageSquare,
   Minus,
+  MoreVertical,
   Send,
   Trash2,
   X,
@@ -139,9 +147,13 @@ export function LiveChatWidget({
   const [isImportant, setIsImportant] = useState(false);
   const [importantSoundEnabled, setImportantSoundEnabled] = useState(false);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [forwardingNote, setForwardingNote] = useState<TeamNoteItem | null>(null);
   const [chatButtonPosition, setChatButtonPosition] =
     useState<ChatButtonPosition | null>(null);
   const typingMutation = trpc.notes.typing.useMutation();
+  const tenantProductQuery = trpc.tenantProduct.current.useQuery(undefined, {
+    staleTime: 60_000,
+  });
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -435,6 +447,10 @@ export function LiveChatWidget({
 
   const isExpanded = state === "open";
   const isMinimized = state === "minimized";
+  const canForwardTeamNotes =
+    isTenantAdmin &&
+    (tenantProductQuery.data?.packageId === "pro" ||
+      tenantProductQuery.data?.packageId === "enterprise");
 
   // Der zentrale Layout-Owner liefert genau einen serialisierten Snapshot für
   // alle Widgetzustände. Initial geladene 24h-Historie löst keinen Warnton aus.
@@ -768,6 +784,28 @@ export function LiveChatWidget({
                         <span className="text-slate-400">
                           {formatNoteTime(note.createdAt)}
                         </span>
+                        {canForwardTeamNotes && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="-my-1 h-7 w-7 text-slate-500 hover:bg-blue-50 hover:text-blue-700"
+                                aria-label="Notiz-Aktionen"
+                                title="Notiz-Aktionen"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align={isOwn ? "end" : "start"}>
+                              <DropdownMenuItem onSelect={() => setForwardingNote(note)}>
+                                <Send className="h-4 w-4 text-blue-600" />
+                                Ansprechpartner informieren
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </div>
                       <div
                         className={cn(
@@ -877,6 +915,13 @@ export function LiveChatWidget({
         destructive
         onConfirm={adminPassword => {
           clearMutation.mutate({ adminPassword, scope: "current_event" });
+        }}
+      />
+      <TeamNoteForwardingDialog
+        note={forwardingNote}
+        open={Boolean(forwardingNote)}
+        onOpenChange={nextOpen => {
+          if (!nextOpen) setForwardingNote(null);
         }}
       />
     </>

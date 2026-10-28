@@ -10194,6 +10194,148 @@ export async function listTeamNotes(options?: {
     .limit(Math.min(options?.limit ?? 150, 300));
 }
 
+export type TeamNoteForwardingChannel = "email" | "whatsapp";
+
+const TEAM_NOTE_FORWARDING_MODULE = "Team-Notizen";
+
+function teamNoteForwardingClaimSubject(
+  noteId: number,
+  channel: TeamNoteForwardingChannel
+) {
+  return `Teamnotiz #${noteId} · ${channel === "email" ? "E-Mail" : "WhatsApp"}: Versandauftrag vorgemerkt`;
+}
+
+/**
+ * Liest ausschließlich eine noch gültige Notiz im aktuellen Veranstaltungs-
+ * kontext. Abgelaufene 24h-Notizen dürfen nicht mehr extern weitergegeben
+ * werden, auch wenn ihre ID noch im Browser vorhanden ist.
+ */
+export async function getTeamNoteForForwarding(noteId: number, now = new Date()) {
+  const database = await getDb();
+  if (!database) return null;
+  await cleanupExpiredTeamNotes(now);
+  const cutoff = new Date(now.getTime() - TEAM_NOTES_TTL_MS);
+  const [note] = await database
+    .select()
+    .from(teamNotes)
+    .where(
+      and(
+        planningScope(teamNotes),
+        eq(teamNotes.id, noteId),
+        gte(teamNotes.createdAt, cutoff)
+      )
+    )
+    .limit(1);
+  return note ?? null;
+}
+
+/**
+ * Reserviert einen E-Mail-Auftrag innerhalb derselben Veranstaltungs-Sperre.
+ * Der Reservierungseintrag enthält bewusst weder Nachricht noch Adressen. Er
+ * schützt gegen Doppelklicks und verhindert nach einem unklaren SMTP-Ergebnis
+ * ein automatisches erneutes Senden derselben Teamnotiz.
+ */
+export async function claimTeamNoteEmailForwarding(input: {
+  noteId: number;
+  actor: AuditActor;
+}) {
+  const database = (await getDb()) as DB;
+  const selectedTenantId = tenant();
+  const selectedYear = year();
+  const selectedEventId = event();
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - TEAM_NOTES_TTL_MS);
+  const claimSubject = teamNoteForwardingClaimSubject(input.noteId, "email");
+
+  return database.transaction(async tx => {
+    const [selectedEvent] = await tx
+      .select({ id: events.id, name: events.name })
+      .from(events)
+      .where(
+        and(
+          eq(events.id, selectedEventId),
+          eq(events.year, selectedYear),
+          eq(events.tenantId, selectedTenantId),
+          eq(events.status, "active")
+        )
+      )
+      .limit(1)
+      .for("update");
+    if (!selectedEvent) {
+      throw new Error("Die ausgewählte Veranstaltung ist nicht verfügbar");
+    }
+
+    const [note] = await tx
+      .select()
+      .from(teamNotes)
+      .where(
+        and(
+          planningScopeFor(teamNotes, selectedYear, selectedEventId),
+          eq(teamNotes.id, input.noteId),
+          gte(teamNotes.createdAt, cutoff)
+        )
+      )
+      .limit(1)
+      .for("update");
+    if (!note) return { status: "unavailable" as const };
+
+    const [existingClaim] = await tx
+      .select({ id: activityLogs.id })
+      .from(activityLogs)
+      .where(
+        and(
+          eq(activityLogs.tenantId, selectedTenantId),
+          eq(activityLogs.eventId, selectedEventId),
+          eq(activityLogs.module, TEAM_NOTE_FORWARDING_MODULE),
+          eq(activityLogs.action, "created"),
+          eq(activityLogs.subject, claimSubject)
+        )
+      )
+      .limit(1);
+    if (existingClaim) return { status: "already_claimed" as const };
+
+    await tx.insert(activityLogs).values({
+      tenantId: selectedTenantId,
+      year: selectedYear,
+      eventId: selectedEventId,
+      eventName: selectedEvent.name,
+      module: TEAM_NOTE_FORWARDING_MODULE,
+      action: "created",
+      subject: claimSubject,
+      actorUserId: input.actor.userId > 0 ? input.actor.userId : null,
+      actorName: input.actor.name,
+      actorRole: input.actor.role,
+      actorLoginMethod: input.actor.loginMethod ?? null,
+    });
+    return { status: "claimed" as const, note };
+  });
+}
+
+/** Schreibt ausschließlich Metadaten zum Ergebnis einer Weiterleitung. */
+export async function recordTeamNoteForwardingResult(input: {
+  actor: AuditActor;
+  noteId: number;
+  channel: TeamNoteForwardingChannel;
+  recipientCount: number;
+  destinationCount: number;
+  result: "accepted" | "not_configured" | "rejected" | "unknown" | "prepared";
+}) {
+  const channelLabel = input.channel === "email" ? "E-Mail" : "WhatsApp";
+  const resultLabel = {
+    accepted: "SMTP-Annahme bestätigt",
+    not_configured: "nicht ausgeführt (SMTP nicht konfiguriert)",
+    rejected: "nicht angenommen",
+    unknown: "Ergebnis unklar – nicht automatisch wiederholt",
+    prepared: "Chatöffnung vorbereitet",
+  }[input.result];
+  await recordActivityLog({
+    actor: input.actor,
+    module: TEAM_NOTE_FORWARDING_MODULE,
+    action: "updated",
+    subject: `Teamnotiz #${input.noteId} · ${channelLabel}: ${resultLabel} (${input.recipientCount} Ansprechpartner / ${input.destinationCount} ${input.channel === "email" ? "E-Mail-Adressen" : "Chat"})`,
+  });
+}
+
 export type TeamNoteReadIdentity = {
   identityKey: string;
   userId?: number | null;

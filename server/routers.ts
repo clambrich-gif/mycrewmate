@@ -187,6 +187,7 @@ import {
   renderPlanningTeamInvitationEmail,
   renderPilotInquiryConfirmationEmail,
   renderPilotInquiryNotificationEmail,
+  renderTeamNoteForwardingEmail,
   renderTenantAccessStatusEmail,
   sendTransactionalEmail,
   type SendMailOptions,
@@ -1121,6 +1122,35 @@ const eventChatReadProcedure = baseProtectedProcedure
 
 const eventChatWriteProcedure = eventChatReadProcedure.use(
   async ({ next }) => db.withPlanningWriteLock(() => next())
+);
+/**
+ * Externe Weiterleitungen bleiben vom normalen Chat-Schreiben getrennt: Sie
+ * prüfen Paket und Administratorrolle serverseitig, halten aber beim SMTP-
+ * Versand niemals die Planungsdaten-Sperre offen.
+ */
+const eventChatForwardingProcedure = eventChatReadProcedure.use(
+  async ({ ctx, next }) => {
+    rejectPublicDemoExternalAction(ctx.user);
+    const entitlement = await db.getCurrentTenantProductEntitlement();
+    if (
+      !entitlement.isUsable ||
+      !productAllowsCapability(entitlement.packageId, "team_note_forwarding")
+    ) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Die Weitergabe von Team-Notizen an Ansprechpartner ist ab dem Pro-Paket verfügbar.",
+      });
+    }
+    if (!(await isTenantAdministrator(ctx.user))) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Team-Notizen können nur von Administratoren oder freigegebenen Stellvertretungen weitergegeben werden.",
+      });
+    }
+    return next({ ctx });
+  }
 );
 
 const accountAdminProcedure = activeSessionProcedure.use(({ ctx, next }) => {
@@ -2121,6 +2151,73 @@ function auditActor(user: {
     role: user.role,
     loginMethod: user.loginMethod,
   };
+}
+
+type TeamNoteForwardingChannel = "email" | "whatsapp";
+
+function normalizeTeamNoteForwardingEmail(value: string | null | undefined) {
+  const email = value?.trim().toLocaleLowerCase("de-DE") ?? "";
+  return z.string().email().safeParse(email).success ? email : null;
+}
+
+/** Entspricht bewusst der bestehenden Click-to-Chat-Normalisierung im Client. */
+function normalizeTeamNoteForwardingWhatsApp(value: string | null | undefined) {
+  const compact = value?.trim().replace(/[\s()./-]/g, "") ?? "";
+  if (!compact) return null;
+  if (compact.startsWith("00")) return compact.slice(2).replace(/\D/g, "") || null;
+  if (compact.startsWith("+")) return compact.slice(1).replace(/\D/g, "") || null;
+  if (compact.startsWith("0")) return `49${compact.slice(1).replace(/\D/g, "")}` || null;
+  return compact.replace(/\D/g, "") || null;
+}
+
+async function teamNoteForwardingRecipients(input: {
+  contactIds: number[];
+  channel: TeamNoteForwardingChannel;
+}) {
+  const requestedIds = Array.from(new Set(input.contactIds));
+  const contacts = await db.listContacts();
+  const selected = contacts.filter(contact => requestedIds.includes(contact.id));
+  if (selected.length !== requestedIds.length) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Mindestens ein ausgewählter Ansprechpartner gehört nicht zur aktuellen Veranstaltung.",
+    });
+  }
+
+  const values = new Map<string, { id: number; name: string; value: string }>();
+  for (const contact of selected) {
+    const value =
+      input.channel === "email"
+        ? normalizeTeamNoteForwardingEmail(contact.email)
+        : normalizeTeamNoteForwardingWhatsApp(contact.phone);
+    if (!value) continue;
+    if (!values.has(value)) {
+      values.set(value, { id: contact.id, name: contact.name, value });
+    }
+  }
+  if (values.size === 0) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        input.channel === "email"
+          ? "Bitte mindestens einen Ansprechpartner mit gültiger E-Mail-Adresse auswählen."
+          : "Bitte mindestens einen Ansprechpartner mit gültiger WhatsApp-Nummer auswählen.",
+    });
+  }
+  return {
+    selectedCount: selected.length,
+    destinations: Array.from(values.values()),
+  };
+}
+
+function teamNoteForwardingMessage(input: {
+  eventName: string;
+  senderName: string;
+  senderRole: "user" | "admin";
+  message: string;
+}) {
+  const senderRole = input.senderRole === "admin" ? "Administration" : "Planungsteam";
+  return `${input.eventName} – Hinweis von ${input.senderName} (${senderRole}):\n\n${input.message}`;
 }
 
 /**
@@ -7617,6 +7714,197 @@ export const appRouter = router({
           db.getTeamNoteUnreadStatus(identity),
         ]);
         return { notes, typing, ...unread };
+      }),
+    forwardingRecipients: eventChatForwardingProcedure
+      .input(z.object({ noteId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const note = await db.getTeamNoteForForwarding(input.noteId);
+        if (!note) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Diese Team-Notiz ist nicht mehr verfügbar oder bereits abgelaufen.",
+          });
+        }
+        const [contacts, event] = await Promise.all([db.listContacts(), db.getEvent()]);
+        if (!event) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Veranstaltung nicht gefunden." });
+        }
+        const emailCounts = new Map<string, number>();
+        const whatsAppCounts = new Map<string, number>();
+        const entries = contacts.map(contact => {
+          const email = normalizeTeamNoteForwardingEmail(contact.email);
+          const whatsApp = normalizeTeamNoteForwardingWhatsApp(contact.phone);
+          if (email) emailCounts.set(email, (emailCounts.get(email) ?? 0) + 1);
+          if (whatsApp) whatsAppCounts.set(whatsApp, (whatsAppCounts.get(whatsApp) ?? 0) + 1);
+          return { contact, email, whatsApp };
+        });
+        return {
+          note: {
+            id: note.id,
+            eventName: event.name,
+            senderName: note.senderName,
+            senderRole: note.senderRole,
+            message: note.message,
+            createdAt: note.createdAt,
+          },
+          emailDeliveryConfigured: isMailDeliveryConfigured(),
+          contacts: entries.map(({ contact, email, whatsApp }) => ({
+            id: contact.id,
+            name: contact.name,
+            email,
+            whatsApp,
+            emailDuplicate: Boolean(email && (emailCounts.get(email) ?? 0) > 1),
+            whatsAppDuplicate: Boolean(whatsApp && (whatsAppCounts.get(whatsApp) ?? 0) > 1),
+          })),
+        };
+      }),
+    forwardEmail: eventChatForwardingProcedure
+      .input(
+        z.object({
+          noteId: z.number().int().positive(),
+          contactIds: z.array(z.number().int().positive()).min(1).max(500),
+          recipientsConfirmed: z.literal(true),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const currentNote = await db.getTeamNoteForForwarding(input.noteId);
+        if (!currentNote) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Diese Team-Notiz ist nicht mehr verfügbar oder bereits abgelaufen.",
+          });
+        }
+        const recipients = await teamNoteForwardingRecipients({
+          contactIds: input.contactIds,
+          channel: "email",
+        });
+        const actor = auditActor(ctx.user);
+        if (!isMailDeliveryConfigured()) {
+          await db.recordTeamNoteForwardingResult({
+            actor,
+            noteId: input.noteId,
+            channel: "email",
+            recipientCount: recipients.selectedCount,
+            destinationCount: recipients.destinations.length,
+            result: "not_configured",
+          });
+          return {
+            status: "not_configured" as const,
+            recipientCount: recipients.selectedCount,
+            addressCount: recipients.destinations.length,
+          };
+        }
+
+        const claim = await db.claimTeamNoteEmailForwarding({
+          noteId: input.noteId,
+          actor,
+        });
+        if (claim.status === "unavailable") {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Diese Team-Notiz ist nicht mehr verfügbar oder bereits abgelaufen.",
+          });
+        }
+        if (claim.status === "already_claimed") {
+          return {
+            status: "already_started" as const,
+            recipientCount: recipients.selectedCount,
+            addressCount: recipients.destinations.length,
+          };
+        }
+
+        const event = await db.getEvent();
+        if (!event) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Veranstaltung nicht gefunden." });
+        }
+        const email = renderTeamNoteForwardingEmail({
+          eventName: event.name,
+          senderName: claim.note.senderName,
+          senderRole: claim.note.senderRole,
+          message: claim.note.message,
+        });
+        let status: "accepted" | "not_configured" | "rejected" | "unknown";
+        try {
+          const delivery = await sendTransactionalEmail({
+            to: recipients.destinations.map(recipient => recipient.value),
+            ...email,
+          });
+          status = delivery.success
+            ? "accepted"
+            : delivery.simulated
+              ? "not_configured"
+              : "rejected";
+        } catch (error) {
+          // Keine Nachricht, keine Adresse und kein Betreff im technischen Log.
+          console.error("[Teamnotiz-Weiterleitung] SMTP-Ergebnis unklar", {
+            noteId: input.noteId,
+            eventId: event.id,
+            actorUserId: actor.userId,
+            error,
+          });
+          status = "unknown";
+        }
+        await db.recordTeamNoteForwardingResult({
+          actor,
+          noteId: input.noteId,
+          channel: "email",
+          recipientCount: recipients.selectedCount,
+          destinationCount: recipients.destinations.length,
+          result: status,
+        });
+        return {
+          status,
+          recipientCount: recipients.selectedCount,
+          addressCount: recipients.destinations.length,
+        };
+      }),
+    prepareWhatsApp: eventChatForwardingProcedure
+      .input(
+        z.object({
+          noteId: z.number().int().positive(),
+          contactId: z.number().int().positive(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const note = await db.getTeamNoteForForwarding(input.noteId);
+        if (!note) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Diese Team-Notiz ist nicht mehr verfügbar oder bereits abgelaufen.",
+          });
+        }
+        const recipients = await teamNoteForwardingRecipients({
+          contactIds: [input.contactId],
+          channel: "whatsapp",
+        });
+        const recipient = recipients.destinations[0];
+        if (!recipient) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Für diesen Ansprechpartner ist keine gültige WhatsApp-Nummer hinterlegt.",
+          });
+        }
+        const event = await db.getEvent();
+        if (!event) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Veranstaltung nicht gefunden." });
+        }
+        await db.recordTeamNoteForwardingResult({
+          actor: auditActor(ctx.user),
+          noteId: input.noteId,
+          channel: "whatsapp",
+          recipientCount: 1,
+          destinationCount: 1,
+          result: "prepared",
+        });
+        return {
+          recipient: { id: recipient.id, name: recipient.name, phone: recipient.value },
+          message: teamNoteForwardingMessage({
+            eventName: event.name,
+            senderName: note.senderName,
+            senderRole: note.senderRole,
+            message: note.message,
+          }),
+        };
       }),
     markRead: eventChatReadProcedure.mutation(async ({ ctx }) =>
       db.markTeamNotesRead(teamNoteReadIdentity(ctx.user))

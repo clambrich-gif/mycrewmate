@@ -65,7 +65,8 @@ export function getMailTransporter(): Transporter | null {
 }
 
 export interface SendMailOptions {
-  to: string;
+  /** Ein Empfänger oder die bewusst sichtbare gemeinsame An-Liste einer Vereinsmail. */
+  to: string | string[];
   subject: string;
   text: string;
   html?: string;
@@ -86,7 +87,7 @@ export async function sendTransactionalEmail(options: SendMailOptions): Promise<
 
   if (!config || !transporter) {
     console.info(
-      `[MailService:Simuliert] E-Mail an ${options.to} mit Betreff "${options.subject}" aufgezeichnet (SMTP nicht konfiguriert).`
+      `[MailService:Simuliert] E-Mail-Auftrag für ${Array.isArray(options.to) ? options.to.length : 1} Empfänger nicht ausgeführt (SMTP nicht konfiguriert).`
     );
     return { success: false, simulated: true };
   }
@@ -101,10 +102,15 @@ export async function sendTransactionalEmail(options: SendMailOptions): Promise<
     attachments: options.attachments,
   });
 
-  const normalizedRecipient = options.to.trim().toLocaleLowerCase("de-DE");
-  const acceptedBySmtp = (info.accepted ?? []).some(
-    address => address.trim().toLocaleLowerCase("de-DE") === normalizedRecipient
+  const requestedRecipients = (Array.isArray(options.to) ? options.to : [options.to])
+    .map(address => address.trim().toLocaleLowerCase("de-DE"))
+    .filter(Boolean);
+  const acceptedRecipients = new Set(
+    (info.accepted ?? []).map(address => address.trim().toLocaleLowerCase("de-DE"))
   );
+  const acceptedBySmtp =
+    requestedRecipients.length > 0 &&
+    requestedRecipients.every(address => acceptedRecipients.has(address));
 
   return {
     // Der SMTP-Server bestätigt damit nur die Annahme. Die endgültige
@@ -186,6 +192,45 @@ function escapeEmailHtml(value: string) {
 
 function emailSubjectLine(value: string) {
   return value.replace(/[\r\n]+/g, " ").trim();
+}
+
+/**
+ * Systemmail für eine bewusst bestätigte gemeinsame Ansprechpartnerliste.
+ * Absender, Event und Text werden ausschließlich serverseitig übergeben;
+ * alle dynamischen HTML-Werte werden explizit escaped.
+ */
+export function renderTeamNoteForwardingEmail(params: {
+  eventName: string;
+  senderName: string;
+  senderRole: "user" | "admin";
+  message: string;
+}) {
+  const eventName = emailSubjectLine(params.eventName) || "Veranstaltung";
+  const senderName = emailSubjectLine(params.senderName) || "Planungsteam";
+  const senderRole = params.senderRole === "admin" ? "Administration" : "Planungsteam";
+  const subject = emailSubjectLine(`[${eventName}] Aktuelle Team-Notiz`);
+  const text = `Aktuelle Team-Notiz für ${eventName}
+
+Von: ${senderName} (${senderRole})
+
+${params.message.trim()}
+
+Diese E-Mail wurde über MyCrewMate im Namen des Planungsteams weitergegeben. Antworten werden an die in MyCrewMate hinterlegte Vereinsantwortadresse geleitet.`;
+  const html = `<!doctype html>
+<html lang="de"><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#0f172a;">
+  <div style="max-width:640px;margin:24px auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
+    <div style="padding:22px 26px;background:#eff6ff;border-bottom:1px solid #bfdbfe;">
+      <p style="margin:0 0 5px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#2563eb;">MyCrewMate · Team-Notiz</p>
+      <h1 style="margin:0;font-size:22px;line-height:1.3;color:#0f172a;">Aktuelle Information für ${escapeEmailHtml(eventName)}</h1>
+    </div>
+    <div style="padding:26px;">
+      <p style="margin:0 0 18px;font-size:14px;color:#475569;">Weitergegeben von <strong style="color:#0f172a;">${escapeEmailHtml(senderName)}</strong> · ${escapeEmailHtml(senderRole)}</p>
+      <div style="white-space:pre-wrap;border-left:4px solid #2563eb;background:#f8fafc;padding:16px 18px;border-radius:4px;font-size:16px;line-height:1.55;color:#0f172a;">${escapeEmailHtml(params.message.trim())}</div>
+      <p style="margin:22px 0 0;font-size:12px;line-height:1.5;color:#64748b;">Diese E-Mail wurde über MyCrewMate im Namen des Planungsteams weitergegeben. Antworten werden an die hinterlegte Vereinsantwortadresse geleitet.</p>
+    </div>
+  </div>
+</body></html>`;
+  return { subject, text, html };
 }
 
 function pilotStartLabel(value: string) {
