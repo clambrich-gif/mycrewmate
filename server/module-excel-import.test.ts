@@ -51,8 +51,27 @@ describe("vollständiger Excel-Import", () => {
           slots: [{ slot: 0, helperSourceId: 301, helperName: "Hugo Helfer" }],
         },
       ],
-      prep: [],
-      post: [],
+      prep: [
+        {
+          sourceId: 501,
+          locationSourceId: 201,
+          contactSourceId: 101,
+          helperSourceId: 301,
+          helperSlots: [
+            { helperSourceId: 301, helperName: "Hugo Helfer" },
+            { helperSourceId: 302, helperName: "Berta Beispiel" },
+          ],
+        },
+      ],
+      post: [
+        {
+          sourceId: 601,
+          locationSourceId: 201,
+          contactSourceId: 101,
+          helperSourceId: 302,
+          helperSlots: [{ helperSourceId: 302, helperName: "Berta Beispiel" }],
+        },
+      ],
       materials: [],
       marketing: [],
       approvals: [],
@@ -79,6 +98,23 @@ describe("vollständiger Excel-Import", () => {
       slot: 0,
       helperSourceId: null,
       helperName: "Hugo Helfer",
+    });
+    expect(sanitized.prep[0]).toMatchObject({
+      sourceId: null,
+      locationSourceId: null,
+      contactSourceId: null,
+      helperSourceId: null,
+      helperSlots: [
+        { helperSourceId: null, helperName: "Hugo Helfer" },
+        { helperSourceId: null, helperName: "Berta Beispiel" },
+      ],
+    });
+    expect(sanitized.post[0]).toMatchObject({
+      sourceId: null,
+      locationSourceId: null,
+      contactSourceId: null,
+      helperSourceId: null,
+      helperSlots: [{ helperSourceId: null, helperName: "Berta Beispiel" }],
     });
   });
 

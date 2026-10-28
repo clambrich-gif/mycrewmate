@@ -244,7 +244,7 @@ describe("Excel-Datensicherung", () => {
     );
   });
 
-  it("vergleicht Vor- und Nachbereitung über den Helfernamen statt über eine flüchtige technische ID", async () => {
+  it("vergleicht Vor- und Nachbereitung inklusive Mehrhelfern über Namen statt über flüchtige technische IDs", async () => {
     const exported = await exportBackupExcel();
     const current: any = parseBackupWorkbook(exported.buffer.toString("base64"));
     current.prep.push({
@@ -258,18 +258,63 @@ describe("Excel-Datensicherung", () => {
       contactName: "Chris Leitung",
       helperSourceId: 21,
       helperName: "Alex Beispiel",
+      helperSlots: [
+        { helperSourceId: 21, helperName: "Alex Beispiel" },
+        { helperSourceId: 22, helperName: "Bea Beispiel" },
+      ],
       status: "offen",
       statusWording: "aufgabe",
       note: "",
       sortOrder: 0,
     });
+    current.post.push({
+      sourceId: 71,
+      category: "Abbau",
+      task: "Material einlagern",
+      dueText: "Sonntag",
+      locationSourceId: null,
+      locationName: "",
+      contactSourceId: 10,
+      contactName: "Chris Leitung",
+      helperSourceId: 22,
+      helperName: "Bea Beispiel",
+      helperSlots: [
+        { helperSourceId: 22, helperName: "Bea Beispiel" },
+        { helperSourceId: 23, helperName: "Cem Beispiel" },
+      ],
+      status: "offen",
+      note: "",
+      sortOrder: 0,
+    });
     const restored = structuredClone(current);
     restored.prep[0].helperSourceId = 999;
+    restored.prep[0].helperSlots = [
+      { helperSourceId: 999, helperName: "Alex Beispiel" },
+      { helperSourceId: 1000, helperName: "Bea Beispiel" },
+    ];
+    restored.post[0].helperSlots = [
+      { helperSourceId: 1001, helperName: "Bea Beispiel" },
+      { helperSourceId: 1002, helperName: "Cem Beispiel" },
+    ];
 
     expect(comparableProjectContent(restored)).toEqual(
       comparableProjectContent(current)
     );
     expect(diffDocuments(current, restored)).toEqual([]);
+
+    const changedHelper = structuredClone(restored);
+    changedHelper.prep[0].helperSlots[1].helperName = "Falscher Helfer";
+    expect(comparableProjectContent(changedHelper)).not.toEqual(
+      comparableProjectContent(current)
+    );
+    expect(diffDocuments(current, changedHelper)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          area: "VORBEREITUNG",
+          fields: ["helperSlots"],
+        }),
+      ])
+    );
   });
 
   it("exportiert und importiert bis zu fünf Mithelfer mit IDs und Namen vollständig", async () => {

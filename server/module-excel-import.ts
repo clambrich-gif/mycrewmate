@@ -800,12 +800,22 @@ export function clearForeignFullImportIds(document: BackupDocument): BackupDocum
     sourceId: null,
     locationSourceId: null,
     contactSourceId: null,
+    helperSourceId: null,
+    helperSlots: row.helperSlots.map(slot => ({
+      ...slot,
+      helperSourceId: null,
+    })),
   }));
   copy.post = copy.post.map(row => ({
     ...row,
     sourceId: null,
     locationSourceId: null,
     contactSourceId: null,
+    helperSourceId: null,
+    helperSlots: row.helperSlots.map(slot => ({
+      ...slot,
+      helperSourceId: null,
+    })),
   }));
   copy.materials = copy.materials.map(row => ({
     ...row,

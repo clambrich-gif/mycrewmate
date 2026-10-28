@@ -2640,6 +2640,30 @@ export function comparableProjectContent(
         )
       )
     );
+  const withoutTaskIds = (
+    rows: Array<Record<string, unknown>>,
+    referenceFields: string[] = []
+  ) =>
+    stableRows(
+      rows.map(row =>
+        stableRecord({
+          ...Object.fromEntries(
+            Object.entries(row).filter(
+              ([field]) =>
+                field !== "sourceId" &&
+                field !== "helperSlots" &&
+                !referenceFields.includes(field)
+            )
+          ),
+          helperSlots: Array.isArray(row.helperSlots)
+            ? row.helperSlots.map(slot => ({
+                helperName:
+                  (slot as { helperName?: unknown }).helperName ?? "",
+              }))
+            : [],
+        })
+      )
+    );
 
   return {
     locations: withoutIds(document.locations as Array<Record<string, unknown>>),
@@ -2665,12 +2689,12 @@ export function comparableProjectContent(
         })
       )
     ),
-    prep: withoutIds(document.prep as Array<Record<string, unknown>>, [
+    prep: withoutTaskIds(document.prep as Array<Record<string, unknown>>, [
       "contactSourceId",
       "locationSourceId",
       "helperSourceId",
     ]),
-    post: withoutIds(document.post as Array<Record<string, unknown>>, [
+    post: withoutTaskIds(document.post as Array<Record<string, unknown>>, [
       "contactSourceId",
       "helperSourceId",
     ]),
@@ -2808,6 +2832,21 @@ const diffFieldEqual = (
     // ändern. Für Aufgaben ist deshalb ausschließlich der gespeicherte Name
     // die fachliche Referenz.
     return personKey(before.helperName) === personKey(after.helperName);
+  }
+  if (field === "helperSlots") {
+    // Auch Mehrhelfer werden beim vollständigen Import anhand ihres Namens
+    // neu verknüpft. Reihenfolge und Namen bleiben fachlich relevant; die
+    // Datenbank-IDs sind nach dem Neuaufbau dagegen zwangsläufig andere.
+    const helperNames = (value: unknown) =>
+      Array.isArray(value)
+        ? value.map(slot =>
+            personKey((slot as { helperName?: unknown }).helperName)
+          )
+        : [];
+    return (
+      JSON.stringify(helperNames(before.helperSlots)) ===
+      JSON.stringify(helperNames(after.helperSlots))
+    );
   }
   return (
     JSON.stringify(before[field] ?? null) ===
