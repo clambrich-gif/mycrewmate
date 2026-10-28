@@ -16,11 +16,8 @@ import { buildWhatsAppShareUrl } from "@/lib/whatsappShare";
 import { trpc } from "@/lib/trpc";
 import type { TeamNoteItem } from "@/components/LiveChatWidget";
 import {
-  AlertTriangle,
   Check,
   CheckCheck,
-  ChevronRight,
-  ClipboardCopy,
   ExternalLink,
   Loader2,
   Mail,
@@ -45,6 +42,8 @@ type EmailResult = {
   addressCount: number;
 };
 
+type WhatsAppContactStatus = "opened" | "sent";
+
 function noteRoleLabel(role: "user" | "admin") {
   return role === "admin" ? "Administration" : "Planungsteam";
 }
@@ -63,9 +62,9 @@ export function TeamNoteForwardingDialog({
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [channelChangedNotice, setChannelChangedNotice] = useState(false);
   const [emailResult, setEmailResult] = useState<EmailResult | null>(null);
-  const [openedWhatsAppContactIds, setOpenedWhatsAppContactIds] = useState<
-    number[]
-  >([]);
+  const [whatsAppContactStatuses, setWhatsAppContactStatuses] = useState<
+    Record<number, WhatsAppContactStatus>
+  >({});
 
   const queryInput = useMemo(() => ({ noteId: note?.id ?? 0 }), [note?.id]);
   const recipientsQuery = trpc.notes.forwardingRecipients.useQuery(queryInput, {
@@ -127,18 +126,12 @@ export function TeamNoteForwardingDialog({
     0,
     selectedEligibleContacts.length - uniqueDestinationCount
   );
-  const whatsAppQueue = useMemo(() => {
-    const seenNumbers = new Set<string>();
-    return selectedEligibleContacts.filter(contact => {
-      const number = contact.whatsApp;
-      if (!number || seenNumbers.has(number)) return false;
-      seenNumbers.add(number);
-      return true;
-    });
-  }, [selectedEligibleContacts]);
-  const nextWhatsAppContact = whatsAppQueue.find(
-    contact => !openedWhatsAppContactIds.includes(contact.id)
-  );
+  const whatsAppOpenedCount = selectedEligibleContacts.filter(contact =>
+    Boolean(whatsAppContactStatuses[contact.id])
+  ).length;
+  const whatsAppSentCount = selectedEligibleContacts.filter(
+    contact => whatsAppContactStatuses[contact.id] === "sent"
+  ).length;
 
   useEffect(() => {
     if (!note?.id) return;
@@ -147,12 +140,19 @@ export function TeamNoteForwardingDialog({
     setSelectedIds([]);
     setChannelChangedNotice(false);
     setEmailResult(null);
-    setOpenedWhatsAppContactIds([]);
+    setWhatsAppContactStatuses({});
   }, [note?.id]);
 
   useEffect(() => {
     setEmailResult(null);
-    setOpenedWhatsAppContactIds([]);
+    setWhatsAppContactStatuses(
+      current =>
+        Object.fromEntries(
+          Object.entries(current).filter(([contactId]) =>
+            selectedIds.includes(Number(contactId))
+          )
+        ) as Record<number, WhatsAppContactStatus>
+    );
   }, [selectedIds]);
 
   const close = () => onOpenChange(false);
@@ -162,7 +162,7 @@ export function TeamNoteForwardingDialog({
     setChannel(nextChannel);
     setSelectedIds([]);
     setEmailResult(null);
-    setOpenedWhatsAppContactIds([]);
+    setWhatsAppContactStatuses({});
     setChannelChangedNotice(true);
   };
   const toggleContact = (contactId: number) => {
@@ -176,20 +176,10 @@ export function TeamNoteForwardingDialog({
     setSelectedIds(eligibleContacts.map(contact => contact.id));
   };
   const clearSelection = () => setSelectedIds([]);
-  const copyText = async () => {
-    if (!serverNote) return;
-    const text = `${serverNote.senderName} (${noteRoleLabel(serverNote.senderRole)}):\n\n${serverNote.message}`;
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success("Notiztext wurde in die Zwischenablage kopiert.");
-    } catch {
-      toast.error(
-        "Der Text konnte nicht in die Zwischenablage kopiert werden."
-      );
-    }
-  };
-  const prepareWhatsApp = () => {
-    if (!note || !nextWhatsAppContact || whatsAppMutation.isPending) return;
+  const prepareWhatsApp = (
+    contact: (typeof selectedEligibleContacts)[number]
+  ) => {
+    if (!note || !contact.whatsApp || whatsAppMutation.isPending) return;
     // Das leere Fenster entsteht direkt durch den Nutzerklick. Nach der
     // serverseitigen Freigabe wird nur seine URL ersetzt – popupblocker-sicher.
     const chatWindow = window.open("about:blank", "_blank");
@@ -200,7 +190,7 @@ export function TeamNoteForwardingDialog({
       return;
     }
     whatsAppMutation.mutate(
-      { noteId: note.id, contactId: nextWhatsAppContact.id },
+      { noteId: note.id, contactId: contact.id },
       {
         onSuccess: result => {
           const url = buildWhatsAppShareUrl(
@@ -219,10 +209,11 @@ export function TeamNoteForwardingDialog({
           // zur App wieder, damit WhatsApp keinen Zugriff auf MyCrewMate erhält.
           chatWindow.opener = null;
           chatWindow.location.replace(url);
-          setOpenedWhatsAppContactIds(current => [
+          setWhatsAppContactStatuses(current => ({
             ...current,
-            result.recipient.id,
-          ]);
+            [result.recipient.id]:
+              current[result.recipient.id] === "sent" ? "sent" : "opened",
+          }));
           toast.success(
             `WhatsApp für ${result.recipient.name} wurde vorbereitet.`
           );
@@ -235,6 +226,18 @@ export function TeamNoteForwardingDialog({
         },
       }
     );
+  };
+
+  const setWhatsAppSent = (contactId: number, sent: boolean) => {
+    setWhatsAppContactStatuses(current => {
+      const next = { ...current };
+      if (sent) {
+        next[contactId] = "sent";
+      } else if (next[contactId] === "sent") {
+        next[contactId] = "opened";
+      }
+      return next;
+    });
   };
 
   const sendEmail = () => {
@@ -571,58 +574,127 @@ export function TeamNoteForwardingDialog({
                           Bitte mindestens einen Ansprechpartner mit
                           WhatsApp-Nummer auswählen.
                         </p>
-                      ) : nextWhatsAppContact ? (
-                        <div className="rounded-lg border border-slate-200 p-3">
-                          <p className="text-sm font-semibold text-slate-900">
-                            Nächster Kontakt: {nextWhatsAppContact.name}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-600">
-                            {openedWhatsAppContactIds.length} von{" "}
-                            {whatsAppQueue.length} Chats vorbereitet
-                          </p>
-                          <Button
-                            type="button"
-                            className="mt-3 w-full"
-                            disabled={whatsAppMutation.isPending}
-                            onClick={prepareWhatsApp}
-                          >
-                            {whatsAppMutation.isPending ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                              <ExternalLink className="mr-2 h-4 w-4" />
-                            )}
-                            WhatsApp für {nextWhatsAppContact.name} öffnen
-                          </Button>
-                        </div>
                       ) : (
-                        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-950">
-                          <div className="flex gap-2">
-                            <CheckCheck className="h-5 w-5 shrink-0" />
-                            <span>
-                              Alle ausgewählten Chats wurden vorbereitet. Die
-                              Nachrichten müssen in WhatsApp jeweils noch von
-                              Ihnen gesendet werden.
-                            </span>
+                        <div className="rounded-lg border border-slate-200 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">
+                                Ausgewählte Ansprechpartner
+                              </p>
+                              <p className="mt-0.5 text-xs text-slate-600">
+                                {whatsAppSentCount} von{" "}
+                                {selectedEligibleContacts.length} als versendet
+                                markiert · {whatsAppOpenedCount} Chat
+                                {whatsAppOpenedCount === 1 ? "" : "s"} geöffnet
+                              </p>
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {whatsAppSentCount ===
+                              selectedEligibleContacts.length
+                                ? "Abgeschlossen"
+                                : "In Bearbeitung"}
+                            </Badge>
                           </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="mt-3"
-                            onClick={() => setOpenedWhatsAppContactIds([])}
-                          >
-                            Durchgang wiederholen
-                          </Button>
+                          <p className="mt-3 rounded-md bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+                            Nach dem Abschicken in WhatsApp setzen Sie das
+                            Häkchen <strong>Versendet</strong>. MyCrewMate kann
+                            das Öffnen eines Chats erkennen, den tatsächlichen
+                            Versand aber nicht selbst prüfen.
+                          </p>
+                          <ul className="mt-3 max-h-80 space-y-2 overflow-y-auto pr-1">
+                            {selectedEligibleContacts.map(contact => {
+                              const status =
+                                whatsAppContactStatuses[contact.id];
+                              const hasOpenedChat = Boolean(status);
+                              const isSent = status === "sent";
+
+                              return (
+                                <li
+                                  key={contact.id}
+                                  className="rounded-lg border border-slate-200 bg-white p-3"
+                                >
+                                  <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <p className="font-semibold text-slate-900">
+                                        {contact.name}
+                                      </p>
+                                      <p
+                                        className={cn(
+                                          "mt-1 flex items-center gap-1.5 text-xs font-medium",
+                                          isSent
+                                            ? "text-emerald-700"
+                                            : hasOpenedChat
+                                              ? "text-amber-700"
+                                              : "text-slate-500"
+                                        )}
+                                      >
+                                        {isSent ? (
+                                          <CheckCheck className="h-3.5 w-3.5" />
+                                        ) : hasOpenedChat ? (
+                                          <ExternalLink className="h-3.5 w-3.5" />
+                                        ) : (
+                                          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                                        )}
+                                        {isSent
+                                          ? "Versendet"
+                                          : hasOpenedChat
+                                            ? "Chat geöffnet – Versand bestätigen"
+                                            : "Noch offen"}
+                                      </p>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={whatsAppMutation.isPending}
+                                        onClick={() => prepareWhatsApp(contact)}
+                                      >
+                                        {whatsAppMutation.isPending ? (
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <ExternalLink className="mr-2 h-4 w-4" />
+                                        )}
+                                        WhatsApp für {contact.name} öffnen
+                                      </Button>
+                                      <Label
+                                        htmlFor={`whatsapp-sent-${contact.id}`}
+                                        className={cn(
+                                          "flex cursor-pointer items-center gap-2 rounded-md border px-2.5 py-2 text-xs font-medium",
+                                          isSent
+                                            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                            : hasOpenedChat
+                                              ? "border-slate-200 bg-white text-slate-700"
+                                              : "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400"
+                                        )}
+                                      >
+                                        <Checkbox
+                                          id={`whatsapp-sent-${contact.id}`}
+                                          checked={isSent}
+                                          disabled={!hasOpenedChat}
+                                          onCheckedChange={checked =>
+                                            setWhatsAppSent(
+                                              contact.id,
+                                              checked === true
+                                            )
+                                          }
+                                        />
+                                        Versendet
+                                      </Label>
+                                    </div>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                          {duplicateCount > 0 && (
+                            <p className="mt-3 text-xs leading-5 text-amber-800">
+                              {duplicateCount} doppelter WhatsApp-Kontaktweg
+                              kann bei Bedarf nur einmal geöffnet werden.
+                            </p>
+                          )}
                         </div>
                       )}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full"
-                        onClick={copyText}
-                      >
-                        <ClipboardCopy className="mr-2 h-4 w-4" /> Text kopieren
-                      </Button>
                     </>
                   )}
                 </div>

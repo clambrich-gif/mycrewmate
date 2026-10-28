@@ -36,11 +36,23 @@ describe("Teamnotiz-Weitergabe – Produktoberfläche", () => {
     expect(dialog).toContain("border-slate-700 bg-slate-700");
     expect(dialog).toContain("border-slate-200 bg-slate-100");
     expect(dialog).toContain("disabled={!canSendEmail}");
-    expect(dialog).not.toContain("emailMutation.isPending ||\n                emailResult");
+    expect(dialog).not.toContain(
+      "emailMutation.isPending ||\n                emailResult"
+    );
     expect(dialog).toContain(
       "Versandweg geändert – bitte Empfänger neu wählen."
     );
-    expect(dialog).toContain("WhatsApp für {nextWhatsAppContact.name} öffnen");
+    expect(dialog).toContain("Ausgewählte Ansprechpartner");
+    expect(dialog).toContain("whatsAppContactStatuses");
+    expect(dialog).toContain("whatsAppOpenedCount");
+    expect(dialog).toContain("whatsAppSentCount");
+    expect(dialog).toContain("Noch offen");
+    expect(dialog).toContain("Chat geöffnet");
+    expect(dialog).toContain("Versendet");
+    expect(dialog).toContain("WhatsApp für {contact.name} öffnen");
+    expect(dialog).not.toContain("nextWhatsAppContact");
+    expect(dialog).not.toContain("whatsAppQueue");
+    expect(dialog).not.toContain("Text kopieren");
     expect(dialog).toContain("about:blank");
     expect(dialog).not.toContain('"noopener,noreferrer"');
     expect(dialog).toContain("chatWindow.opener = null");
