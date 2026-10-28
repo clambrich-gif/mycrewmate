@@ -87,6 +87,8 @@ describe("Paket 3: Light-Entitlements", () => {
     expect(router).toContain('productModuleReadProcedure("locations", "maps_gpx")');
     expect(router).toContain('productModuleWriteProcedure("locations", "maps_gpx")');
     expect(router).toContain('productCapabilityAdminProcedure("maps_gpx")');
+    expect(router).toContain('? "event_years"\n            : "additional_events"');
+    expect(router).toContain("requestedPlanningScope(ctx.req).year");
   });
 
   it("zeigt gesperrte Funktionen über Klemmi statt über einen Checkout", () => {
@@ -98,6 +100,8 @@ describe("Paket 3: Light-Entitlements", () => {
     expect(dialog).toContain("Klemmi hat einen Hinweis");
     expect(dialog).toContain("keinen öffentlichen Checkout");
     expect(layout).toContain("KlemmiUpgradeDialog");
+    expect(layout).toContain("const allowsEventCreation = allowsAdditionalEvents || allowsEventYears");
+    expect(layout).toContain("Für dieses Jahr ist bereits eine Hauptveranstaltung angelegt.");
     expect(locations).toContain("gpx-upgrade-notice");
     expect(portal).toContain('data-slot="tenant-package-filter"');
     expect(portal).toContain("filteredActiveTenants");

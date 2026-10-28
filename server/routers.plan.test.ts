@@ -1203,10 +1203,10 @@ describe("Planungs-API", () => {
     ).rejects.toThrow();
   });
 
-  it("legt Veranstaltungen nur mit mindestens einem ausgewählten Wochentag an", async () => {
+  it("legt Veranstaltungen im ausgewählten Jahr nur mit mindestens einem Wochentag an", async () => {
     dbMocks.createEvent.mockResolvedValue({
       id: 3,
-      year: 2026,
+      year: 2028,
       name: "Cross",
       activeDays: ["Samstag", "Sonntag"],
       created: true,
@@ -1215,10 +1215,11 @@ describe("Planungs-API", () => {
     await expect(
       appRouter.createCaller(ctx).events.create({
         name: "Cross",
+        year: 2028,
         activeDays: ["Samstag", "Sonntag"],
       })
     ).resolves.toMatchObject({ id: 3, activeDays: ["Samstag", "Sonntag"] });
-    expect(dbMocks.createEvent).toHaveBeenCalledWith("Cross", undefined, [
+    expect(dbMocks.createEvent).toHaveBeenCalledWith("Cross", 2028, [
       "Samstag",
       "Sonntag",
     ]);
@@ -1226,8 +1227,66 @@ describe("Planungs-API", () => {
     await expect(
       appRouter
         .createCaller(ctx)
-        .events.create({ name: "Leer", activeDays: [] })
+        .events.create({ name: "Leer", year: 2028, activeDays: [] })
     ).rejects.toThrow("Mindestens ein Veranstaltungstag");
+  });
+
+  it("erlaubt Light die erste Veranstaltung eines neuen Jahres, aber keine zweite im aktuellen Jahr", async () => {
+    const originalEntitlementImplementation =
+      dbMocks.getCurrentTenantProductEntitlement.getMockImplementation();
+    const originalCapabilityImplementation =
+      dbMocks.currentProductAllowsCapability.getMockImplementation();
+    dbMocks.getCurrentTenantProductEntitlement.mockResolvedValue({
+      tenantId: "rsc-eifelland-mayen",
+      packageId: "light",
+      status: "active",
+      startsOn: null,
+      endsOn: null,
+      eventId: null,
+      isUsable: true,
+      entitlements: {},
+    });
+    dbMocks.currentProductAllowsCapability.mockImplementation(async capability =>
+      capability === "event_years"
+    );
+    dbMocks.createEvent.mockResolvedValue({
+      id: 8,
+      year: 2028,
+      name: "Neue Hauptveranstaltung",
+      activeDays: ["Samstag"],
+      created: true,
+    });
+
+    try {
+      const caller = appRouter.createCaller(ctx);
+      await expect(
+        caller.events.create({
+          name: "Neue Hauptveranstaltung",
+          year: 2028,
+          activeDays: ["Samstag"],
+        })
+      ).resolves.toMatchObject({ id: 8, year: 2028 });
+      expect(dbMocks.currentProductAllowsCapability).toHaveBeenLastCalledWith(
+        "event_years"
+      );
+
+      await expect(
+        caller.events.create({
+          name: "Zweite Veranstaltung",
+          activeDays: ["Samstag"],
+        })
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      expect(dbMocks.currentProductAllowsCapability).toHaveBeenLastCalledWith(
+        "additional_events"
+      );
+    } finally {
+      dbMocks.getCurrentTenantProductEntitlement.mockImplementation(
+        originalEntitlementImplementation
+      );
+      dbMocks.currentProductAllowsCapability.mockImplementation(
+        originalCapabilityImplementation
+      );
+    }
   });
 
   it("legt ein neues Jahr nur mit der ausdrücklich erfassten ersten Veranstaltung an", async () => {

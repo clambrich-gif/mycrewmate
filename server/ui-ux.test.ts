@@ -559,22 +559,22 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(presence).toContain("administratorNamesKey");
   });
 
-  it("fordert beim neuen Veranstaltungsjahr eine individuelle erste Veranstaltung ohne Vorbelegung", () => {
+  it("bündelt Jahr und Veranstaltung in einem Anlegeablauf", () => {
     const layout = source("client/src/components/Layout.tsx");
     const router = source("server/routers.ts");
     const yearContext = source("client/src/contexts/YearContext.tsx");
 
-    expect(layout).toContain('const [newYearInitialEventName, setNewYearInitialEventName] = useState("")');
-    expect(layout).toContain("const [newYearInitialEventDays, setNewYearInitialEventDays] = useState<Weekday[]>([])");
-    expect(layout).toContain("Erste Veranstaltung");
-    expect(layout).toContain("Name der Veranstaltung eingeben");
-    expect(layout).toContain("initialEventName: newYearInitialEventName");
-    expect(layout).toContain("activeDays: newYearInitialEventDays");
-    expect(layout).toContain("selectYear(result.event.year, result.event.id)");
-    expect(layout).toContain("Das Jahr wird ausschließlich mit Ihren Angaben angelegt.");
-    expect(router).toContain("initialEventName: z.string().trim().min(2).max(200)");
-    expect(router).toContain("db.createEvent(\n          input.initialEventName,");
-    expect(router).not.toContain('db.createEvent("MyEifelRide", input.year)');
+    expect(layout).toContain('const [newEventYear, setNewEventYear] = useState(year)');
+    expect(layout).toContain('const [newEventUsesNewYear, setNewEventUsesNewYear] = useState(false)');
+    expect(layout).toContain("Veranstaltungsjahr");
+    expect(layout).toContain("Neues Veranstaltungsjahr …");
+    expect(layout).toContain("newEventUsesNewYear ? \"new-event-year\" : String(newEventYear)");
+    expect(layout).toContain("year: newEventYear");
+    expect(layout).toContain("selectYear(result.year, result.id)");
+    expect(layout).not.toContain("Weiteres Veranstaltungsjahr anlegen");
+    expect(layout).not.toContain("openYearDialog");
+    expect(router).toContain("year: eventYearInput.optional()");
+    expect(router).toContain("db.createEvent(input.name, input.year, input.activeDays)");
     expect(yearContext).toContain("preferredEventId?: number");
     expect(yearContext).toContain("${EVENT_STORAGE_PREFIX}${tenantId}-${nextYear}");
   });
@@ -1655,8 +1655,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain('data-slot="event-management-card"');
     expect(layout).toContain("formatEventDurationLong");
     expect(layout).toContain("Zeitraum ändern");
+    expect(layout).toContain("openEventCreateDialog");
+    expect(layout).toContain("!flex-row justify-between border-t border-slate-200");
     expect(layout).not.toContain("openEventDateSettings");
     expect(layout).not.toContain('data-slot="event-dates-trigger"');
+    expect(layout).not.toContain('title="Weiteres Jahr anlegen"');
     expect(layout).toContain("Startdatum");
     expect(layout).toContain("Enddatum");
     expect(layout).toContain('data-slot="event-date-range-clear"');

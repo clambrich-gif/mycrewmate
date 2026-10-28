@@ -4989,12 +4989,18 @@ export const appRouter = router({
       .input(
         z.object({
           name: z.string().trim().min(2).max(200),
+          year: eventYearInput.optional(),
           activeDays: activeDaysInput,
         })
       )
-      .mutation(async ({ input }) => {
-        await requireCurrentProductCapability("additional_events");
-        return db.createEvent(input.name, undefined, input.activeDays);
+      .mutation(async ({ ctx, input }) => {
+        const selectedYear = requestedPlanningScope(ctx.req).year;
+        await requireCurrentProductCapability(
+          input.year !== undefined && input.year !== selectedYear
+            ? "event_years"
+            : "additional_events"
+        );
+        return db.createEvent(input.name, input.year, input.activeDays);
       }),
     update: adminProcedure
       .input(
