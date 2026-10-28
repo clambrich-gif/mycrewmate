@@ -991,13 +991,38 @@ describe("PDF-Erzeugung", () => {
         sortOrder: 1,
       },
     ];
-    const contactData = { ...data, prepTasks, postTasks, materials };
+    const ownContactHelper: Helper = {
+      ...helpers[0],
+      id: 3,
+      name: "  Martin   Reis  ",
+      contactId: 1,
+    };
+    const indirectlyAssignedShift: Shift = {
+      ...shifts[1],
+      id: 3,
+      area: "Verpflegung",
+      task: "Ausgabe am Verpflegungspunkt",
+    };
+    const contactData = {
+      ...data,
+      helpers: [...helpers, ownContactHelper],
+      shifts: [...shifts, indirectlyAssignedShift],
+      assignments: [
+        ...assignments,
+        { id: 4, shiftId: 2, helperId: 3, slot: 1, createdAt: new Date() },
+        { id: 5, shiftId: 3, helperId: 1, slot: 0, createdAt: new Date() },
+      ],
+      prepTasks,
+      postTasks,
+      materials,
+    };
     const rows = selectContactOverviewRows(contactData, 1);
 
-    // Schicht 1 ist Bereichsverantwortung, Schicht 2 ist eine eigene Helferschicht.
+    // Schicht 1 ist Bereichsverantwortung; Schicht 2 ist wirklich Martins eigene Helferschicht.
+    // Schicht 3 enthält nur eine von Martin betreute Helferin und darf nicht auftauchen.
     expect(rows.shifts.map(row => row.shift.id)).toEqual([1, 2]);
-    expect(rows.shifts[0]?.responsibility).toContain("Bereichsverantwortung");
-    expect(rows.shifts[1]?.responsibility).toContain("eigene Schicht");
+    expect(rows.shifts[0]?.responsibility).toBe("Bereichsverantwortung");
+    expect(rows.shifts[1]?.responsibility).toBe("eigene Schicht");
     expect(rows.prepTasks).toEqual(prepTasks);
     expect(rows.postTasks).toEqual(postTasks);
     expect(rows.materials).toEqual(materials);

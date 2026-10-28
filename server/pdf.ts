@@ -2403,15 +2403,29 @@ export function selectContactOverviewRows(
   data: PlanningData,
   contactId: number
 ): ContactOverviewRows {
+  const contact = data.contacts.find(item => item.id === contactId);
   const responsibleAreas = new Set(
     (data.areaContacts ?? [])
       .filter(item => item.contactId === contactId)
       .map(item => item.area)
   );
+  const normalizedContactName = String(contact?.name ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("de-DE");
   const ownHelperIds = new Set(
-    data.helpers
-      .filter(helper => helper.contactId === contactId)
-      .map(helper => helper.id)
+    normalizedContactName
+      ? data.helpers
+          .filter(
+            helper =>
+              helper.contactId === contactId &&
+              helper.name
+                .trim()
+                .replace(/\s+/g, " ")
+                .toLocaleLowerCase("de-DE") === normalizedContactName
+          )
+          .map(helper => helper.id)
+      : []
   );
   const ownShiftIds = new Set(
     data.assignments
