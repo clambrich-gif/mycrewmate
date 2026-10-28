@@ -32,6 +32,7 @@ import {
   dashboardTargetHref,
   type DashboardTarget,
 } from "@/lib/dashboard-target-filter";
+import { requestEventManagerOpen } from "@/lib/event-management";
 import { preloadRoute } from "@/lib/route-loaders";
 import { trpc } from "@/lib/trpc";
 import {
@@ -1086,6 +1087,7 @@ function EventCountdownWidget({
   const canManageEventLogo =
     !isPublicDemoSession && canManageLogo && allowsCustomBranding;
   const canInteractWithEventLogo = !isPublicDemoSession && canManageLogo;
+  const canManageEvent = !isPublicDemoSession && canManageLogo;
   const [upgradeCapability, setUpgradeCapability] = useState<
     "custom_branding" | null
   >(null);
@@ -1291,9 +1293,25 @@ function EventCountdownWidget({
               </span>
             )}
           </button>
-          <div data-slot="event-countdown-summary" className="min-w-0">
-            {counterContent}
-          </div>
+          {canManageEvent ? (
+            <button
+              type="button"
+              data-slot="event-countdown-summary"
+              className="min-w-0 rounded-md px-1.5 py-1 transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              onClick={() => requestEventManagerOpen(event.id)}
+              title="Veranstaltungen und Zeitraum verwalten"
+              aria-label={`Veranstaltungen und Zeitraum von ${event.name} verwalten`}
+            >
+              {counterContent}
+              <span className="mt-0.5 block text-center text-[11px] font-medium text-blue-700">
+                Zeitraum verwalten
+              </span>
+            </button>
+          ) : (
+            <div data-slot="event-countdown-summary" className="min-w-0">
+              {counterContent}
+            </div>
+          )}
         </div>
         <div
           ref={quoteViewportRef}

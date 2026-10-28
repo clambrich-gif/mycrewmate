@@ -72,6 +72,33 @@ export function formatEventDuration({ startDate, endDate }: EventDateRange) {
   return `${formatEventDate(startDate)}–${formatEventDate(endDate)}`;
 }
 
+/** Formatiert einen Zeitraum ausgeschrieben für die Veranstaltungsverwaltung. */
+export function formatEventDurationLong({
+  startDate,
+  endDate,
+}: EventDateRange) {
+  const error = eventDateRangeError({ startDate, endDate });
+  if (error || !startDate || !endDate) return "Zeitraum noch festlegen";
+
+  const start = parts(startDate);
+  const end = parts(endDate);
+  const monthName = (year: number, month: number) =>
+    new Intl.DateTimeFormat("de-DE", { month: "long" }).format(
+      new Date(year, month - 1, 1)
+    );
+
+  if (startDate === endDate) {
+    return `${start.day}. ${monthName(start.year, start.month)} ${start.year}`;
+  }
+  if (start.year === end.year && start.month === end.month) {
+    return `${start.day}.–${end.day}. ${monthName(end.year, end.month)} ${end.year}`;
+  }
+  if (start.year === end.year) {
+    return `${start.day}. ${monthName(start.year, start.month)} – ${end.day}. ${monthName(end.year, end.month)} ${end.year}`;
+  }
+  return `${start.day}. ${monthName(start.year, start.month)} ${start.year} – ${end.day}. ${monthName(end.year, end.month)} ${end.year}`;
+}
+
 function localStartOfDate(value: string) {
   const { year, month, day } = parts(value);
   return new Date(year, month - 1, day);

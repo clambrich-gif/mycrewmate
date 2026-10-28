@@ -74,6 +74,10 @@ import { preloadRoute } from "@/lib/route-loaders";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
+  EVENT_MANAGER_OPEN_EVENT,
+  type EventManagerOpenDetail,
+} from "@/lib/event-management";
+import {
   tenantRoleLabel,
   useTenantAdministration,
 } from "@/hooks/useTenantAdministration";
@@ -94,11 +98,11 @@ import {
   eventStartSelectionSessionKey,
   initialAccessibleEventForYear,
 } from "@shared/event-start-selection";
+import { formatEventDurationLong } from "@shared/event-dates";
 import { LEGAL_DOCUMENTS } from "@shared/legal-contract-documents";
 import {
   Bike,
   Building2,
-  Calendar,
   CalendarRange,
   CheckCircle2,
   ChevronLeft,
@@ -114,7 +118,6 @@ import {
   Menu,
   Pencil,
   Plus,
-  Settings2,
   Share,
   Sparkles,
   Trash2,
@@ -430,6 +433,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [yearDialogOpen, setYearDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [eventManagerOpen, setEventManagerOpen] = useState(false);
+  const [eventManagerFocusEventId, setEventManagerFocusEventId] = useState<number | null>(
+    null
+  );
   const [packageComparisonOpen, setPackageComparisonOpen] = useState(false);
   const openPackageComparison = () => setPackageComparisonOpen(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -1355,14 +1361,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
     onError: error => toast.error(error.message),
   });
 
-  const openEventManager = () => {
+  const openEventManager = useCallback((targetEventId?: number) => {
     setMobileMenuOpen(false);
     setEditEventId(null);
     setEditEventName("");
     setEditEventStartDate("");
     setEditEventEndDate("");
+    setEditRetentionHoldReason("");
+    setEditRetentionHoldNote("");
+    setEventManagerFocusEventId(targetEventId ?? eventId);
     setEventManagerOpen(true);
-  };
+  }, [eventId]);
+
+  useEffect(() => {
+    if (effectiveNavigationRole !== "admin") return;
+    const handleEventManagerRequest = (event: Event) => {
+      const detail = (event as CustomEvent<EventManagerOpenDetail>).detail;
+      openEventManager(detail?.eventId);
+    };
+    window.addEventListener(EVENT_MANAGER_OPEN_EVENT, handleEventManagerRequest);
+    return () =>
+      window.removeEventListener(EVENT_MANAGER_OPEN_EVENT, handleEventManagerRequest);
+  }, [effectiveNavigationRole, openEventManager]);
 
   const openYearDialog = () => {
     setMobileMenuOpen(false);
@@ -1370,20 +1390,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
     setNewYearInitialEventName("");
     setNewYearInitialEventDays([]);
     setYearDialogOpen(true);
-  };
-
-  const openEventDateSettings = (targetEventId?: number) => {
-    const target =
-      (targetEventId
-        ? events.data?.find(item => item.id === targetEventId)
-        : selectedEvent) ?? events.data?.[0];
-    if (!target) return;
-    setMobileMenuOpen(false);
-    setEditEventId(target.id);
-    setEditEventName(target.name);
-    setEditEventStartDate(target.startDate ?? "");
-    setEditEventEndDate(target.endDate ?? "");
-    setEventManagerOpen(true);
   };
 
   const submitPassword = (event: FormEvent) => {
@@ -2001,39 +2007,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ))}
               </SelectContent>
             </Select>
-            <div className="mb-1.5 mt-3 flex items-center justify-between">
+            <div className="mb-1.5 mt-3">
               <Label className="text-xs text-muted-foreground">
                 Veranstaltung
               </Label>
-              {effectiveNavigationRole === "admin" && (
-                <span className="flex items-center gap-0.5">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    title="Veranstaltungen verwalten"
-                    aria-label="Veranstaltungen verwalten"
-                    onClick={openEventManager}
-                  >
-                    <Settings2 className="h-4 w-4" />
-                  </Button>
-                  {productAllowsCapability(productPackageId, "additional_events") && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      title="Veranstaltung anlegen"
-                      aria-label="Veranstaltung anlegen"
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        setEventDialogOpen(true);
-                      }}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  )}
-                </span>
-              )}
             </div>
             <Select
               value={
@@ -2057,6 +2034,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ))}
               </SelectContent>
             </Select>
+            {effectiveNavigationRole === "admin" && (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-2 w-full justify-start border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
+                data-slot="event-management-trigger"
+                onClick={() => openEventManager(eventId)}
+              >
+                <CalendarRange className="mr-2 h-4 w-4" aria-hidden="true" />
+                Veranstaltungen verwalten
+              </Button>
+            )}
             {hasPackageSummary && (
               <button
                 type="button"
@@ -2327,49 +2316,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
               ))}
             </SelectContent>
           </Select>
-          <div className="mb-1.5 mt-3 flex items-center justify-between">
+          <div className="mb-1.5 mt-3">
             <Label className="text-xs text-muted-foreground">
               Veranstaltung
             </Label>
-            {effectiveNavigationRole === "admin" && (
-              <span className="flex items-center gap-0.5">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  title="Veranstaltungsdaten & Zeitraum bearbeiten"
-                  aria-label="Veranstaltungsdaten & Zeitraum bearbeiten"
-                  data-slot="event-dates-trigger"
-                  onClick={() => openEventDateSettings(eventId)}
-                >
-                  <Calendar className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  title="Veranstaltungen verwalten"
-                  aria-label="Veranstaltungen verwalten"
-                  onClick={openEventManager}
-                >
-                  <Settings2 className="h-4 w-4" />
-                </Button>
-                {productAllowsCapability(productPackageId, "additional_events") && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      title="Veranstaltung anlegen"
-                      aria-label="Veranstaltung anlegen"
-                      onClick={() => setEventDialogOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
-              </span>
-            )}
           </div>
           <Select
             value={
@@ -2390,6 +2340,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
               ))}
             </SelectContent>
           </Select>
+          {effectiveNavigationRole === "admin" && (
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-2 w-full justify-start border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
+              data-slot="event-management-trigger"
+              onClick={() => openEventManager(eventId)}
+            >
+              <CalendarRange className="mr-2 h-4 w-4" aria-hidden="true" />
+              Veranstaltungen verwalten
+            </Button>
+          )}
           {hasPackageSummary && (
             <button
               type="button"
@@ -2784,278 +2746,329 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={eventManagerOpen} onOpenChange={setEventManagerOpen}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white text-slate-950">
-          <DialogHeader>
-            <DialogTitle>Veranstaltungen {year} verwalten</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Aktive Veranstaltungen zählen für das Jahreskontingent. Mit
-            „Abschließen“ bleiben alle Daten als Historie erhalten, verschwinden
-            aber aus der täglichen Planung und können später wieder geöffnet werden.
-            Nur beim Löschen werden Planungsdaten dauerhaft entfernt.
-          </p>
-          <div className="divide-y rounded-lg border">
-            {managedEvents.data?.map(item => (
-              <div
-                key={item.id}
-                className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center"
-              >
-                {editEventId === item.id ? (
-                  <div className="w-full space-y-3 sm:max-w-md">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Name der Veranstaltung</Label>
-                      <Input
-                        autoFocus
-                        value={editEventName}
-                        onChange={event => setEditEventName(event.target.value)}
-                        className="w-full"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <Label htmlFor={`edit-start-date-${item.id}`} className="text-xs text-muted-foreground">
-                          Startdatum
-                        </Label>
-                        <Input
-                          id={`edit-start-date-${item.id}`}
-                          type="date"
-                          value={editEventStartDate}
-                          onChange={event => setEditEventStartDate(event.target.value)}
-                          className="w-full"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor={`edit-end-date-${item.id}`} className="text-xs text-muted-foreground">
-                          Enddatum
-                        </Label>
-                        <Input
-                          id={`edit-end-date-${item.id}`}
-                          type="date"
-                          value={editEventEndDate}
-                          onChange={event => setEditEventEndDate(event.target.value)}
-                          className="w-full"
-                        />
-                      </div>
-                    </div>
-                    {editEventStartDate && editEventEndDate && editEventStartDate > editEventEndDate && (
-                      <p className="text-xs text-destructive">
-                        Das Enddatum darf nicht vor dem Startdatum liegen.
-                      </p>
-                    )}
-                    {Boolean(editEventStartDate) !== Boolean(editEventEndDate) && (
-                      <p className="text-xs text-muted-foreground">
-                        Bitte Start- und Enddatum gemeinsam eintragen oder beide leeren.
-                      </p>
-                    )}
-                    {item.startDate && item.endDate && (
-                      <p className="text-xs text-muted-foreground">
-                        Zum Entfernen des gespeicherten Zeitraums bitte die separate Löschaktion verwenden.
-                      </p>
-                    )}
-                    {item.status === "closed" && (
-                      <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
-                        <Label className="mb-1 block text-xs font-semibold">
-                          Aufbewahrungsausnahme (nur bei dokumentierter Pflicht)
-                        </Label>
-                        <select
-                          className="h-9 w-full rounded-md border border-amber-300 bg-white px-2 text-sm"
-                          value={editRetentionHoldReason}
-                          onChange={event => setEditRetentionHoldReason(event.target.value)}
-                        >
-                          <option value="">Keine – regulär nach drei Jahren löschen</option>
-                          <option value="tax">Steuer / Buchhaltung</option>
-                          <option value="contract">Vertragliche Pflicht</option>
-                          <option value="insurance">Versicherung</option>
-                          <option value="legal">Rechtsanspruch / Verfahren</option>
-                          <option value="other">Anderer dokumentierter Grund</option>
-                        </select>
-                        {editRetentionHoldReason && (
-                          <Input
-                            className="mt-2 h-9 bg-white text-sm"
-                            value={editRetentionHoldNote}
-                            maxLength={500}
-                            placeholder="Kurzer Nachweis- oder Aktenhinweis"
-                            onChange={event => setEditRetentionHoldNote(event.target.value)}
-                          />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium">{item.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {item.startDate && item.endDate
-                        ? `Zeitraum: ${item.startDate} bis ${item.endDate}`
-                        : "Kein Datum hinterlegt"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {item.activeDays.join(", ")}
-                    </div>
-                    {item.status === "closed" && (
-                      <div className="mt-1 inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                        Abgeschlossen · nur Historie
-                      </div>
-                    )}
-                    {item.id === eventId && (
-                      <div className="text-xs text-primary">
-                        Aktuell ausgewählt
-                      </div>
-                    )}
-                  </div>
-                )}
-                <div className="flex w-full shrink-0 flex-col justify-end gap-2 sm:w-auto sm:flex-row">
-                  {editEventId === item.id ? (
-                    <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        disabled={updateEvent.isPending}
-                        onClick={() => setEditEventId(null)}
-                      >
-                        Abbrechen
-                      </Button>
-                      {item.startDate && item.endDate && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          data-slot="event-date-range-clear"
-                          className="w-full border-red-200 text-red-700 hover:border-red-300 hover:bg-red-50 hover:text-red-800 sm:w-auto"
-                          disabled={updateEvent.isPending}
-                          onClick={() =>
-                            setClearEventDatesTarget({
-                              id: item.id,
-                              name: item.name,
-                            })
-                          }
-                        >
-                          Zeitraum löschen
-                        </Button>
-                      )}
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        disabled={
-                          editEventName.trim().length < 2 ||
-                          Boolean(editEventStartDate) !== Boolean(editEventEndDate) ||
-                          (Boolean(editEventStartDate) &&
-                            Boolean(editEventEndDate) &&
-                            editEventStartDate > editEventEndDate) ||
-                          updateEvent.isPending
-                        }
-                        onClick={() =>
-                          updateEvent.mutate({
-                            id: item.id,
-                            name: editEventName,
-                            startDate: editEventStartDate || null,
-                            endDate: editEventEndDate || null,
-                            retentionHoldReason: (editRetentionHoldReason || null) as
-                              | "tax"
-                              | "contract"
-                              | "insurance"
-                              | "legal"
-                              | "other"
-                              | null,
-                            retentionHoldNote: editRetentionHoldNote || null,
-                          })
-                        }
-                      >
-                        Speichern
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        onClick={() => {
-                          setEditEventId(item.id);
-                          setEditEventName(item.name);
-                          setEditEventStartDate(item.startDate ?? "");
-                          setEditEventEndDate(item.endDate ?? "");
-                          setEditRetentionHoldReason(item.retentionHoldReason ?? "");
-                          setEditRetentionHoldNote(item.retentionHoldNote ?? "");
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                        Bearbeiten
-                      </Button>
-                      {item.status === "active" ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="w-full border-slate-300 bg-white text-slate-700 hover:bg-slate-100 sm:w-auto"
-                          disabled={closeEvent.isPending}
-                          onClick={() =>
-                            setCloseEventTarget({ id: item.id, name: item.name })
-                          }
-                        >
-                          <CheckCircle2 className="h-4 w-4" />
-                          Abschließen
-                        </Button>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="w-full border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 sm:w-auto"
-                          disabled={reopenEvent.isPending}
-                          onClick={() =>
-                            setReopenEventTarget({ id: item.id, name: item.name })
-                          }
-                        >
-                          <CheckCircle2 className="h-4 w-4" />
-                          Wieder öffnen
-                        </Button>
-                      )}
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="w-full border border-red-700 !bg-red-600 !text-white shadow-sm hover:!bg-red-700 disabled:!border-red-300 disabled:!bg-red-100 disabled:!text-red-800 disabled:opacity-100 sm:w-auto"
-                        disabled={(managedEvents.data?.length ?? 0) <= 1}
-                        title={
-                          (managedEvents.data?.length ?? 0) <= 1
-                            ? "Die letzte Veranstaltung des Jahres kann nicht gelöscht werden"
-                            : "Veranstaltung löschen"
-                        }
-                        onClick={() => {
-                          setEventManagerOpen(false);
-                          setDeleteEventTarget({
-                            id: item.id,
-                            name: item.name,
-                          });
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Löschen
-                      </Button>
-                    </>
-                  )}
-                </div>
+      <Dialog
+        open={eventManagerOpen}
+        onOpenChange={open => {
+          setEventManagerOpen(open);
+          if (!open) setEditEventId(null);
+        }}
+      >
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-3xl overflow-x-hidden overflow-y-auto bg-white p-0 text-slate-950 sm:rounded-2xl">
+          <DialogHeader className="border-b border-slate-200 bg-gradient-to-br from-sky-50 via-white to-slate-50 px-5 py-5 sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 text-left">
+                <DialogTitle>Veranstaltungen {year} verwalten</DialogTitle>
+                <DialogDescription className="mt-1.5 max-w-xl text-sm leading-5 text-slate-600">
+                  Zeitraum, Veranstaltungstage und Status übersichtlich an einer Stelle verwalten.
+                </DialogDescription>
               </div>
-            ))}
-          </div>
-          {(managedEvents.data?.length ?? 0) <= 1 && (
-            <p className="text-xs text-muted-foreground">
-              Für jedes Veranstaltungsjahr muss mindestens eine Veranstaltung
-              erhalten bleiben.
+              {productAllowsCapability(productPackageId, "additional_events") && (
+                <Button
+                  type="button"
+                  className="shrink-0"
+                  onClick={() => {
+                    setEventManagerOpen(false);
+                    setEventDialogOpen(true);
+                  }}
+                >
+                  <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+                  Veranstaltung anlegen
+                </Button>
+              )}
+            </div>
+          </DialogHeader>
+          <div className="space-y-5 px-5 py-5 sm:px-6">
+            <p className="rounded-lg border border-sky-100 bg-sky-50/70 px-3 py-2.5 text-sm leading-5 text-sky-950">
+              Die aktuell ausgewählte Veranstaltung steht immer oben. „Abschließen“ bewahrt
+              alle Daten als Historie, nur „Löschen“ entfernt sie dauerhaft.
             </p>
-          )}
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setEventManagerOpen(false)}
-            >
+            <div className="space-y-3">
+              {[...(managedEvents.data ?? [])]
+                .sort((left, right) => {
+                  const focusedId = eventManagerFocusEventId ?? eventId;
+                  return Number(right.id === focusedId) - Number(left.id === focusedId);
+                })
+                .map((item, index) => (
+                  <div key={item.id} className="space-y-2">
+                    {index === 0 && (
+                      <p className="px-0.5 text-xs font-bold uppercase tracking-[0.1em] text-sky-800">
+                        Aktuelle Veranstaltung
+                      </p>
+                    )}
+                    {index === 1 && (
+                      <p className="px-0.5 pt-2 text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
+                        Weitere Veranstaltungen
+                      </p>
+                    )}
+                    <article
+                      data-slot="event-management-card"
+                      data-current-event={item.id === eventId ? "true" : "false"}
+                      className={cn(
+                        "rounded-xl border bg-white p-4 shadow-sm",
+                        item.id === (eventManagerFocusEventId ?? eventId)
+                          ? "border-sky-300 ring-2 ring-sky-100"
+                          : "border-slate-200"
+                      )}
+                    >
+                      <div className="flex flex-col gap-4">
+                        {editEventId === item.id ? (
+                          <div className="space-y-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">
+                                Name der Veranstaltung
+                              </Label>
+                              <Input
+                                autoFocus
+                                value={editEventName}
+                                onChange={event => setEditEventName(event.target.value)}
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div className="space-y-1">
+                                <Label htmlFor={`edit-start-date-${item.id}`} className="text-xs text-muted-foreground">
+                                  Startdatum
+                                </Label>
+                                <Input
+                                  id={`edit-start-date-${item.id}`}
+                                  type="date"
+                                  value={editEventStartDate}
+                                  onChange={event => setEditEventStartDate(event.target.value)}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label htmlFor={`edit-end-date-${item.id}`} className="text-xs text-muted-foreground">
+                                  Enddatum
+                                </Label>
+                                <Input
+                                  id={`edit-end-date-${item.id}`}
+                                  type="date"
+                                  value={editEventEndDate}
+                                  onChange={event => setEditEventEndDate(event.target.value)}
+                                />
+                              </div>
+                            </div>
+                            {editEventStartDate && editEventEndDate && editEventStartDate > editEventEndDate && (
+                              <p className="text-xs text-destructive">
+                                Das Enddatum darf nicht vor dem Startdatum liegen.
+                              </p>
+                            )}
+                            {Boolean(editEventStartDate) !== Boolean(editEventEndDate) && (
+                              <p className="text-xs text-muted-foreground">
+                                Bitte Start- und Enddatum gemeinsam eintragen oder beide leeren.
+                              </p>
+                            )}
+                            {item.startDate && item.endDate && (
+                              <p className="text-xs text-muted-foreground">
+                                Zum Entfernen des gespeicherten Zeitraums bitte die separate Löschaktion verwenden.
+                              </p>
+                            )}
+                            {item.status === "closed" && (
+                              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+                                <Label className="mb-1 block text-xs font-semibold">
+                                  Aufbewahrungsausnahme (nur bei dokumentierter Pflicht)
+                                </Label>
+                                <select
+                                  className="h-9 w-full rounded-md border border-amber-300 bg-white px-2 text-sm"
+                                  value={editRetentionHoldReason}
+                                  onChange={event => setEditRetentionHoldReason(event.target.value)}
+                                >
+                                  <option value="">Keine – regulär nach drei Jahren löschen</option>
+                                  <option value="tax">Steuer / Buchhaltung</option>
+                                  <option value="contract">Vertragliche Pflicht</option>
+                                  <option value="insurance">Versicherung</option>
+                                  <option value="legal">Rechtsanspruch / Verfahren</option>
+                                  <option value="other">Anderer dokumentierter Grund</option>
+                                </select>
+                                {editRetentionHoldReason && (
+                                  <Input
+                                    className="mt-2 h-9 bg-white text-sm"
+                                    value={editRetentionHoldNote}
+                                    maxLength={500}
+                                    placeholder="Kurzer Nachweis- oder Aktenhinweis"
+                                    onChange={event => setEditRetentionHoldNote(event.target.value)}
+                                  />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <div>
+                                <h3 className="text-base font-bold text-slate-950">{item.name}</h3>
+                                <p className="mt-0.5 text-sm font-medium text-slate-700">
+                                  {formatEventDurationLong({
+                                    startDate: item.startDate,
+                                    endDate: item.endDate,
+                                  })}
+                                </p>
+                                <p className="mt-0.5 text-xs text-slate-500">
+                                  {item.activeDays.length > 1
+                                    ? `${item.activeDays[0]} bis ${item.activeDays[item.activeDays.length - 1]}`
+                                    : item.activeDays[0] ?? "Veranstaltungstage noch festlegen"}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {item.id === eventId && (
+                                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-800">
+                                    Aktuell ausgewählt
+                                  </span>
+                                )}
+                                <span
+                                  className={cn(
+                                    "rounded-full px-2 py-0.5 text-[11px] font-bold",
+                                    item.status === "active"
+                                      ? "bg-emerald-100 text-emerald-800"
+                                      : "bg-slate-100 text-slate-700"
+                                  )}
+                                >
+                                  {item.status === "active" ? "Aktive Planung" : "Abgeschlossen · Historie"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 sm:flex-row sm:flex-wrap">
+                          {editEventId === item.id ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={updateEvent.isPending}
+                                onClick={() => setEditEventId(null)}
+                              >
+                                Abbrechen
+                              </Button>
+                              {item.startDate && item.endDate && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  data-slot="event-date-range-clear"
+                                  className="border-red-200 text-red-700 hover:border-red-300 hover:bg-red-50 hover:text-red-800"
+                                  disabled={updateEvent.isPending}
+                                  onClick={() =>
+                                    setClearEventDatesTarget({ id: item.id, name: item.name })
+                                  }
+                                >
+                                  Zeitraum löschen
+                                </Button>
+                              )}
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={
+                                  editEventName.trim().length < 2 ||
+                                  Boolean(editEventStartDate) !== Boolean(editEventEndDate) ||
+                                  (Boolean(editEventStartDate) &&
+                                    Boolean(editEventEndDate) &&
+                                    editEventStartDate > editEventEndDate) ||
+                                  updateEvent.isPending
+                                }
+                                onClick={() =>
+                                  updateEvent.mutate({
+                                    id: item.id,
+                                    name: editEventName,
+                                    startDate: editEventStartDate || null,
+                                    endDate: editEventEndDate || null,
+                                    retentionHoldReason: (editRetentionHoldReason || null) as
+                                      | "tax"
+                                      | "contract"
+                                      | "insurance"
+                                      | "legal"
+                                      | "other"
+                                      | null,
+                                    retentionHoldNote: editRetentionHoldNote || null,
+                                  })
+                                }
+                              >
+                                Speichern
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                                onClick={() => {
+                                  setEditEventId(item.id);
+                                  setEditEventName(item.name);
+                                  setEditEventStartDate(item.startDate ?? "");
+                                  setEditEventEndDate(item.endDate ?? "");
+                                  setEditRetentionHoldReason(item.retentionHoldReason ?? "");
+                                  setEditRetentionHoldNote(item.retentionHoldNote ?? "");
+                                }}
+                              >
+                                <Pencil className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                                Zeitraum ändern
+                              </Button>
+                              {item.status === "active" ? (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={closeEvent.isPending}
+                                  onClick={() =>
+                                    setCloseEventTarget({ id: item.id, name: item.name })
+                                  }
+                                >
+                                  <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                                  Abschließen
+                                </Button>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                                  disabled={reopenEvent.isPending}
+                                  onClick={() =>
+                                    setReopenEventTarget({ id: item.id, name: item.name })
+                                  }
+                                >
+                                  <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                                  Wieder öffnen
+                                </Button>
+                              )}
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="border border-red-700 !bg-red-600 !text-white shadow-sm hover:!bg-red-700 disabled:!border-red-300 disabled:!bg-red-100 disabled:!text-red-800 disabled:opacity-100 sm:ml-auto"
+                                disabled={(managedEvents.data?.length ?? 0) <= 1}
+                                title={
+                                  (managedEvents.data?.length ?? 0) <= 1
+                                    ? "Die letzte Veranstaltung des Jahres kann nicht gelöscht werden"
+                                    : "Veranstaltung löschen"
+                                }
+                                onClick={() => {
+                                  setEventManagerOpen(false);
+                                  setDeleteEventTarget({ id: item.id, name: item.name });
+                                }}
+                              >
+                                <Trash2 className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                                Löschen
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+                ))}
+            </div>
+            {(managedEvents.data?.length ?? 0) <= 1 && (
+              <p className="text-xs text-slate-500">
+                Für jedes Veranstaltungsjahr muss mindestens eine Veranstaltung erhalten bleiben.
+              </p>
+            )}
+          </div>
+          <DialogFooter className="border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
+            <Button type="button" variant="outline" onClick={() => setEventManagerOpen(false)}>
               Schließen
             </Button>
           </DialogFooter>

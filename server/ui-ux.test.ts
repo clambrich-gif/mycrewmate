@@ -1595,9 +1595,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('className="bg-slate-50 py-1 pr-1 sm:pr-2"');
   });
 
-  it("zeigt den kompakten Event-Zähler mit Tagesimpuls, austauschbarem Logo und Kalender-Trigger", () => {
+  it("zeigt den kompakten Event-Zähler mit Tagesimpuls und einen klaren Verwaltungszugang", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const layout = source("client/src/components/Layout.tsx");
+    const eventManager = source("client/src/lib/event-management.ts");
     const router = source("server/routers.ts");
     const eventDates = source("shared/event-dates.ts");
     const styles = source("client/src/index.css");
@@ -1643,9 +1644,19 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).not.toContain("formatEventDate");
     expect(dashboard).toContain("Event läuft · Tag");
     expect(dashboard).toContain("Event abgeschlossen");
+    expect(dashboard).toContain("requestEventManagerOpen(event.id)");
+    expect(dashboard).toContain("Zeitraum verwalten");
 
-    expect(layout).toContain('data-slot="event-dates-trigger"');
-    expect(layout).toContain("openEventDateSettings");
+    expect(eventManager).toContain("mycrewmate:open-event-manager");
+    expect(layout).toContain("EVENT_MANAGER_OPEN_EVENT");
+    expect(layout).toContain('data-slot="event-management-trigger"');
+    expect(layout).toContain("Veranstaltungen verwalten");
+    expect(layout).toContain("eventManagerFocusEventId");
+    expect(layout).toContain('data-slot="event-management-card"');
+    expect(layout).toContain("formatEventDurationLong");
+    expect(layout).toContain("Zeitraum ändern");
+    expect(layout).not.toContain("openEventDateSettings");
+    expect(layout).not.toContain('data-slot="event-dates-trigger"');
     expect(layout).toContain("Startdatum");
     expect(layout).toContain("Enddatum");
     expect(layout).toContain('data-slot="event-date-range-clear"');

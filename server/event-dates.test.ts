@@ -4,6 +4,7 @@ import {
   eventDateRangeError,
   formatEventDate,
   formatEventDuration,
+  formatEventDurationLong,
   isIsoCalendarDate,
 } from "../shared/event-dates";
 
@@ -54,6 +55,24 @@ describe("event-dates & countdown", () => {
         endDate: null,
       })
     ).toBe("an den Veranstaltungstagen");
+  });
+
+  it("formatiert den Zeitraum für die Veranstaltungsverwaltung ausgeschrieben", () => {
+    expect(
+      formatEventDurationLong({
+        startDate: "2027-06-11",
+        endDate: "2027-06-13",
+      })
+    ).toBe("11.–13. Juni 2027");
+    expect(
+      formatEventDurationLong({
+        startDate: "2027-06-11",
+        endDate: "2027-06-11",
+      })
+    ).toBe("11. Juni 2027");
+    expect(formatEventDurationLong({ startDate: null, endDate: null })).toBe(
+      "Zeitraum noch festlegen"
+    );
   });
 
   it("ermittelt verbleibende Tage und Stunden vor dem Eventstart", () => {

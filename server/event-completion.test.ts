@@ -60,7 +60,7 @@ describe("Veranstaltungsabschluss und Paket-Auslastung", () => {
     const masterPortal = source("client/src/pages/MasterAdminPortal.tsx");
 
     expect(layout).toContain('Veranstaltung abschließen?');
-    expect(layout).toContain('Abgeschlossen · nur Historie');
+    expect(layout).toContain('Abgeschlossen · Historie');
     expect(layout).toContain('Wieder öffnen');
     expect(masterPortal).toContain('Nur aktive Events zählen');
     expect(masterPortal).toContain('Verein gesamt:');
