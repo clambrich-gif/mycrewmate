@@ -30,10 +30,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('klemmiTarget="helper-action-donation"');
     expect(helpers).toContain('data-klemmi-target="helper-action-whatsapp"');
     expect(helpers).toContain('data-klemmi-target="helper-action-pdf"');
-    expect(helpers).toContain("DemoLockedHelperAction");
-    expect(helpers).toContain("isPublicDemoSession ? <>");
-    expect(helpers).toContain("In dieser fiktiven Vereinsdemo wird kein WhatsApp-Versand vorbereitet oder versendet.");
-    expect(helpers).toContain("In dieser fiktiven Vereinsdemo wird keine persönliche PDF erstellt oder heruntergeladen.");
+    expect(helpers).not.toContain("DemoLockedHelperAction");
+    expect(helpers).not.toContain("isPublicDemoSession");
+    expect(helpers).not.toContain("In dieser fiktiven Vereinsdemo wird kein WhatsApp-Versand vorbereitet oder versendet.");
+    expect(helpers).not.toContain("In dieser fiktiven Vereinsdemo wird keine persönliche PDF erstellt oder heruntergeladen.");
     expect(helpers).toContain('data-klemmi-target="helper-action-edit"');
     expect(helpers).toContain('data-klemmi-target="helper-action-delete"');
     expect(helpers).toContain('guideHelperId={displayedHelpers[0]?.id ?? null}');
@@ -80,7 +80,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(voiceControl).toContain("Klemmi-Stimme stummschalten");
     expect(guide).toContain('data-klemmi-trigger');
     expect(guide).toContain("setOpeningPending(true)");
-    expect(guide).toContain('playClip("public-demo-opening")');
+    expect(guide).not.toContain('playClip("public-demo-opening")');
     expect(guide).toContain('playClip("helpers-opening")');
     expect(guide).toContain('data-klemmi-guide');
     expect(guide).toContain('pointer-events-none fixed inset-0');
@@ -455,8 +455,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("createDashboardKlemmiSteps");
     expect(dashboard).toContain("hasMappableLocations");
     expect(dashboard).toContain("trpc.locations.list.useQuery");
-    expect(dashboard).toContain("steps={isPublicDemoSession ? publicDemoKlemmiSteps : dashboardKlemmiSteps}");
-    expect(dashboard).toContain("createPublicDemoDashboardKlemmiSteps");
+    expect(dashboard).toContain("steps={dashboardKlemmiSteps}");
+    expect(dashboard).not.toContain("createPublicDemoDashboardKlemmiSteps");
     expect(tour).toContain("hasMappableLocations");
     expect(tour).toContain("hasEventPeriod");
     expect(tour).toContain("hasPriorityActions");
@@ -535,7 +535,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const layout = source("client/src/components/Layout.tsx");
     const presence = source("client/src/components/OnlinePresenceBadge.tsx");
 
-    expect(layout).toContain("const onlinePresence = useOnlinePresence(!isPublicDemoSession)");
+    expect(layout).toContain("const onlinePresence = useOnlinePresence()");
     expect(layout.match(/<OnlinePresenceBadge/g)).toHaveLength(2);
     expect(presence).toContain("const PRESENCE_POLL_MS = 60_000");
     expect(presence).toContain("refetchInterval: PRESENCE_POLL_MS");
@@ -1907,9 +1907,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     // Zusätzlich zur Anmeldung, Sidebar und mobilen Kopfzeile verwenden die
     // Passwort-Aktivierung und die sichere Eventstartansicht die Wortmarke auf
     // neutralem Hintergrund.
-    expect(layout.match(/src=\{MYCREWMATE_WORDMARK\}/g)).toHaveLength(7);
+    // Die zwei identischen, exklusiven Demo-Logo-Zweige wurden entfernt.
+    expect(layout.match(/src=\{MYCREWMATE_WORDMARK\}/g)).toHaveLength(5);
     expect(layout.match(/src=\{MYCREWMATE_ICON\}/g)).toHaveLength(2);
-    expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(7);
+    expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(5);
   });
 
   it("trennt Markenbereich und Online-Status in kompakte Sidebar-Panels", () => {

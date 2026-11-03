@@ -522,16 +522,6 @@ export default function PilotHomepageDraft() {
                   Pilot kostenlos anfragen <ArrowRight className="size-4" aria-hidden="true" />
                 </Button>
               </a>
-              <a href="/vereinsdemo">
-                <Button
-                  type="button"
-                  size="lg"
-                  variant="outline"
-                  className="rounded-xl border-slate-300 bg-white/80 px-5 text-slate-700 hover:border-blue-300 hover:bg-white hover:text-blue-700"
-                >
-                  Fiktive Vereinsdemo ausprobieren
-                </Button>
-              </a>
             </div>
             <p className="mt-3 text-sm font-semibold text-slate-600">
               Unverbindliche Anfrage · Persönliche Rückmeldung · Kein Kauf auf dieser Seite

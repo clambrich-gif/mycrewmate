@@ -30,18 +30,13 @@ import { useEventYear } from "./contexts/YearContext";
 export const PLANNING_DATA_SYNC_INTERVAL_MS = 8_000;
 
 function PlanningDataSynchronizer({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { tenantId, year, eventId } = useEventYear();
   const queryClient = useQueryClient();
   const syncInFlightRef = useRef(false);
-  const isPublicDemoSession =
-    user?.openId.startsWith("tenant-admin:demo-session-") === true;
 
   useEffect(() => {
-    // Eine Vereinsdemo läuft absichtlich in einer einzelnen, kurzlebigen
-    // Test-Sitzung. Dort erzeugt eine globale Aktualisierung aller aktiven
-    // Abfragen keinen Mehrwert, aber unnötige Last bei vielen Musterdaten.
-    if (!isAuthenticated || isPublicDemoSession) return;
+    if (!isAuthenticated) return;
 
     const refreshVisiblePlanningData = async () => {
       if (syncInFlightRef.current) return;
@@ -70,7 +65,7 @@ function PlanningDataSynchronizer({ children }: { children: React.ReactNode }) {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refreshOnReturn);
     };
-  }, [eventId, isAuthenticated, isPublicDemoSession, queryClient, tenantId, year]);
+  }, [eventId, isAuthenticated, queryClient, tenantId, year]);
 
   return <>{children}</>;
 }
@@ -98,8 +93,6 @@ const TeamNoteForwardingPreview = import.meta.env.DEV
   : null;
 const OfferDemo = lazy(() => import("@/pages/OfferDemo"));
 const PilotHomepageDraft = lazy(() => import("@/pages/PilotHomepageDraft"));
-const ClubDemoLanding = lazy(() => import("@/pages/ClubDemoLanding"));
-const PublicDemoEntry = lazy(() => import("@/pages/PublicDemoEntry"));
 const PublicLegalPage = lazy(() => import("@/pages/PublicLegal"));
 const LegalDocument = lazy(() => import("@/pages/LegalDocument"));
 const AppPrivacy = lazy(() => import("@/pages/AppPrivacy"));
@@ -172,7 +165,8 @@ function PublicSiteRouter() {
         <Route path="/" component={OfferDemo} />
         {/* Isolierte, nicht verlinkte Designvorschau. Die produktive Startseite bleibt OfferDemo. */}
         <Route path="/pilot" component={PilotHomepageDraft} />
-        <Route path="/vereinsdemo" component={ClubDemoLanding} />
+        <Route path="/vereinsdemo" component={NotFound} />
+        <Route path="/demozugang" component={NotFound} />
         <Route path="/game" component={GameRoot} />
         <Route path="/impressum">
           <PublicLegalPage kind="impressum" />
@@ -249,12 +243,12 @@ function Router() {
       </Route>
       <Route path="/vereinsdemo">
         <Suspense fallback={<RouteLoading />}>
-          <ClubDemoLanding />
+          <NotFound />
         </Suspense>
       </Route>
       <Route path="/demozugang">
         <Suspense fallback={<RouteLoading />}>
-          <PublicDemoEntry />
+          <NotFound />
         </Suspense>
       </Route>
       {/* Das Spiel ist immer öffentlich und benötigt keinen Vereinslogin */}

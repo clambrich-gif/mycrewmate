@@ -168,13 +168,8 @@ import {
 } from "./public-share-rate-limit";
 import { allowPublicPilotInquiryAttempt } from "./pilot-inquiry-rate-limit";
 import {
-  createPublicDemoSession,
-  getActivePublicDemoCount,
-  getPublicDemoLoginDetails,
   isPublicDemoOpenId,
-  PUBLIC_DEMO_CONCURRENT_LIMIT,
-  PUBLIC_DEMO_SESSION_MS,
-  type PublicDemoPackage,
+  isPublicDemoTenantId,
 } from "./public-demo";
 import { getPlatformBackupStatus } from "./coolify-backup-status";
 import { upcomingPreparationDeadlines } from "./dashboard-deadlines";
@@ -209,59 +204,6 @@ const PILOT_ORGANIZATION_TYPES = [
   "Gemeinde oder kommunaler Veranstalter",
 ] as const;
 const MFA_CHALLENGE_TOKEN_BYTES = 32;
-const PUBLIC_DEMO_VISITOR_COOKIE = "mycrewmate_demo_visitor";
-const PUBLIC_DEMO_VISITOR_COOKIE_MS = 24 * 60 * 60 * 1000;
-const PUBLIC_DEMO_START_WINDOW_MS = 5 * 60 * 1000;
-// Pro Browser ist genug Raum für Event Pass, Light und Pro sowie Wiederholungen.
-// Anders als ein IP-Limit blockiert dies keine Besucher hinter demselben Router.
-const PUBLIC_DEMO_START_LIMIT = 9;
-const publicDemoStartAttempts = new Map<string, { count: number; resetAt: number }>();
-
-function readRequestCookie(req: Request, name: string) {
-  const prefix = `${name}=`;
-  const raw = req.headers.cookie ?? "";
-  return raw
-    .split(";")
-    .map(part => part.trim())
-    .find(part => part.startsWith(prefix))
-    ?.slice(prefix.length);
-}
-
-function getPublicDemoVisitorKey(req: Request, res: Response) {
-  const existing = readRequestCookie(req, PUBLIC_DEMO_VISITOR_COOKIE);
-  if (existing && /^[A-Za-z0-9_-]{16,96}$/.test(existing)) {
-    return `public-demo:${existing}`;
-  }
-
-  const visitorId = randomBytes(18).toString("base64url");
-  res.cookie(PUBLIC_DEMO_VISITOR_COOKIE, visitorId, {
-    ...getSessionCookieOptions(req),
-    maxAge: PUBLIC_DEMO_VISITOR_COOKIE_MS,
-  });
-  return `public-demo:${visitorId}`;
-}
-
-function allowPublicDemoStart(clientKey: string) {
-  const now = Date.now();
-  // Die In-Memory-Tabelle ist nur ein Komfortschutz pro Browser. Abgelaufene
-  // Einträge werden dabei opportunistisch entfernt und wachsen nicht weiter.
-  if (publicDemoStartAttempts.size > 1_000) {
-    publicDemoStartAttempts.forEach((value, key) => {
-      if (value.resetAt <= now) publicDemoStartAttempts.delete(key);
-    });
-  }
-  const current = publicDemoStartAttempts.get(clientKey);
-  if (!current || current.resetAt <= now) {
-    publicDemoStartAttempts.set(clientKey, {
-      count: 1,
-      resetAt: now + PUBLIC_DEMO_START_WINDOW_MS,
-    });
-    return true;
-  }
-  if (current.count >= PUBLIC_DEMO_START_LIMIT) return false;
-  current.count += 1;
-  return true;
-}
 
 async function safelyRecordPresence(
   req: Parameters<typeof recordSessionPresence>[0],
@@ -2484,37 +2426,6 @@ export const appRouter = router({
         }
       }),
   }),
-  publicDemo: router({
-    start: publicProcedure
-      .input(z.object({ packageId: z.enum(["event_pass", "light", "pro"]) }))
-      .mutation(async ({ ctx, input }) => {
-        const clientKey = getPublicDemoVisitorKey(ctx.req, ctx.res);
-        if (!allowPublicDemoStart(clientKey)) {
-          throw new TRPCError({
-            code: "TOO_MANY_REQUESTS",
-            message:
-              "In diesem Browser wurden gerade mehrere Demos gestartet. Bitte warten Sie kurz und versuchen Sie es dann erneut.",
-          });
-        }
-        const activeDemos = await getActivePublicDemoCount();
-        if (activeDemos >= PUBLIC_DEMO_CONCURRENT_LIMIT) {
-          throw new TRPCError({
-            code: "TOO_MANY_REQUESTS",
-            message:
-              "Die Vereinsdemo ist gerade stark gefragt. Bitte versuchen Sie es in wenigen Minuten erneut.",
-          });
-        }
-        const session = await createPublicDemoSession(input.packageId as PublicDemoPackage);
-        // Der erfolgreiche Start ist aussagekräftiger als ein bloßer Aufruf der
-        // Demoauswahl. Ein Fehler beim optionalen Zähler darf die Demo nie sperren.
-        try {
-          await db.recordAnonymousPublicReachMetric("club_demo_started");
-        } catch (error) {
-          console.warn("[PublicReach] Demo-Start konnte nicht gezählt werden.", error);
-        }
-        return session;
-      }),
-  }),
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     passwordStatus: publicProcedure.query(async () => {
@@ -3789,28 +3700,18 @@ export const appRouter = router({
             message: "Der Einmal-Wechsel-Link ist ungültig oder abgelaufen.",
           });
         }
-        const demoLogin = await getPublicDemoLoginDetails({
-          tenantId: handoff.tenantId,
-          openId: handoff.createdByOpenId,
-        });
-        if (demoLogin) {
-          const token = await sdk.createSessionToken(demoLogin.user.openId, {
-            name: "Demo-Planung",
-            expiresInMs: PUBLIC_DEMO_SESSION_MS,
-            sessionVersion: demoLogin.sessionVersion,
+        // Ein ehemaliger Demolink darf niemals in den Master-Handoff fallen.
+        // Nur tatsächlich vom Plattforminhaber ausgestellte Übergaben bleiben gültig.
+        if (
+          isPublicDemoOpenId(handoff.createdByOpenId) ||
+          isPublicDemoTenantId(handoff.tenantId) ||
+          (handoff.createdByOpenId !== ADMIN_PASSWORD_OPEN_ID &&
+            !(await db.isAuthorizedOAuthOwner(handoff.createdByOpenId)))
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Der Einmal-Wechsel-Link ist ungültig oder abgelaufen.",
           });
-          ctx.res.cookie(COOKIE_NAME, token, {
-            ...getSessionCookieOptions(ctx.req),
-            maxAge: PUBLIC_DEMO_SESSION_MS,
-          });
-          return {
-            success: true,
-            tenantId: handoff.tenantId,
-            startEvent: { year: demoLogin.year, eventId: demoLogin.eventId },
-            publicDemo: true,
-            packageId: demoLogin.packageId,
-            ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
-          } as const;
         }
         const token = await sdk.createSessionToken(ADMIN_PASSWORD_OPEN_ID, {
           name: "Plattform-Administrator",

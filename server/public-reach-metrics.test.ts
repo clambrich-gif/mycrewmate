@@ -30,7 +30,6 @@ describe("anonyme öffentliche Reichweite", () => {
   it("hält den öffentlichen Zähler klein und die Masterauswertung geschützt", () => {
     const clientMetric = read("client/src/components/PublicReachMetric.tsx");
     const router = read("server/routers.ts");
-    const demo = read("client/src/pages/ClubDemoLanding.tsx");
 
     expect(clientMetric).toContain("mycrewmate.de");
     expect(clientMetric).toContain("Lokale Entwicklung, Vorschauen und Tests beeinflussen");
@@ -38,7 +37,5 @@ describe("anonyme öffentliche Reichweite", () => {
     expect(router).toContain("publicReach: router");
     expect(router).toContain("record: publicProcedure");
     expect(router).toContain("publicReach: masterAdminProcedure.query");
-    expect(router).toContain('recordAnonymousPublicReachMetric("club_demo_started")');
-    expect(demo).toContain('metric="club_demo_page_view"');
   });
 });

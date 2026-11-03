@@ -225,15 +225,6 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     const proSteps = getHelperGuideSteps("pro");
     expect(proSteps.find(step => step.key === "donation")?.title).toBe("Spende direkt mit erfassen");
     expect(proSteps.find(step => step.key === "action-whatsapp")?.title).toBe("Nach vollständiger Planung per WhatsApp anfragen");
-    const publicDemoSteps = getHelperGuideSteps("pro", true);
-    expect(publicDemoSteps.find(step => step.key === "action-whatsapp")).toMatchObject({
-      title: "WhatsApp in der Demo sichtbar, aber gesperrt",
-      audioKey: "action-whatsapp-demo",
-    });
-    expect(publicDemoSteps.find(step => step.key === "action-pdf")).toMatchObject({
-      title: "Persönliche PDF in der Demo sichtbar, aber gesperrt",
-      audioKey: "action-pdf-demo",
-    });
     expect(proSteps.find(step => step.key === "action-cancellation")).toMatchObject({
       title: "Bei Absage auf Nein stellen – nicht löschen",
       audioKey: "action-cancellation",
@@ -468,30 +459,10 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
       expect(asset.byteLength).toBeGreaterThan(0);
     }
 
-    const publicDemoAudioIds = new Set<string>();
     const publicDemoAudioIdSet = new Set<string>(KLEMMI_PUBLIC_DEMO_AUDIO_IDS);
     const contactsAudioIdSet = new Set<string>(KLEMMI_CONTACTS_AUDIO_IDS);
     const helpersAudioIdSet = new Set<string>(KLEMMI_HELPERS_AUDIO_IDS);
     const donationsAudioIdSet = new Set<string>(KLEMMI_DONATIONS_AUDIO_IDS);
-    for (const packageId of ["event_pass", "light", "pro"] as const) {
-      for (const step of createPublicDemoDashboardKlemmiSteps({
-        hasEventPeriod: true,
-        hasPriorityActions: true,
-        hasHelpers: true,
-        canUseMapsGpx: packageId === "pro",
-        canUseDonations: packageId === "pro",
-        currentPackageId: packageId,
-      })) {
-        publicDemoAudioIds.add(`dashboard-${step.audioKey ?? step.key}`);
-      }
-      for (const step of getHelperGuideSteps(packageId, true)) {
-        publicDemoAudioIds.add(`helpers-${step.audioKey ?? step.key}`);
-      }
-    }
-    publicDemoAudioIds.add("public-demo-opening");
-    expect(
-      [...publicDemoAudioIds].every(id => publicDemoAudioIdSet.has(id))
-    ).toBe(true);
 
     const realHelpersAudioIds = new Set<string>(["helpers-opening"]);
     for (const packageId of ["event_pass", "light", "pro", "enterprise"] as const) {

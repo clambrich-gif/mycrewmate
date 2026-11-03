@@ -160,7 +160,7 @@ export function AuditCenter({
 }: {
   /** Klemmi wechselt nur die sichtbare Protokollansicht, ohne Daten zu verändern. */
   guideFocus?: AuditGuideFocus;
-  /** Öffentliche Vereinsdemos zeigen Protokolle ohne Verwaltungsaktionen. */
+  /** Optionale reine Protokollansicht ohne Verwaltungsaktionen. */
   readOnly?: boolean;
   /** Datei- und Importverlauf bleibt ausgeblendet, wenn Dateiaktionen gesperrt sind. */
   showFileHistory?: boolean;

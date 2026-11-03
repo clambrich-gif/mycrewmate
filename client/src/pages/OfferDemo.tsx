@@ -709,15 +709,6 @@ export default function OfferDemo() {
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </Button>
               </a>
-              <a href="/vereinsdemo">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-h-11 rounded-xl border-slate-300 bg-white/80 px-5 text-slate-700 hover:border-blue-300 hover:bg-white hover:text-blue-700"
-                >
-                  Fiktive Vereinsdemo ausprobieren
-                </Button>
-              </a>
             </div>
             <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold text-slate-600">
               <span className="inline-flex items-center gap-2">

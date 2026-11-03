@@ -226,7 +226,7 @@ function SaveLoadControlsFallback() {
 
 function LazySaveLoadControls({ onAction }: { onAction?: () => void }) {
   return (
-    <Suspense fallback={<SaveLoadControlsFallback />}>
+    <Suspense fallback=<SaveLoadControlsFallback />>
       <SaveLoadControls onAction={onAction} />
     </Suspense>
   );
@@ -301,8 +301,7 @@ function focusCurrentPageSearch() {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
-  const isPublicDemoSession = user?.openId.startsWith("tenant-admin:demo-session-") === true;
-  const onlinePresence = useOnlinePresence(!isPublicDemoSession);
+  const onlinePresence = useOnlinePresence();
   const {
     isCoAdmin,
     isPrimaryTenantAdmin,
@@ -326,39 +325,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [klemmiMuted, setKlemmiMuted] = useState(
     getKlemmiMuted
   );
-  const finishPublicDemo = useCallback(() => {
-    void fetch("/api/public-demo/end", {
-      method: "POST",
-      credentials: "same-origin",
-      keepalive: true,
-    }).finally(() => {
-      window.location.assign("/vereinsdemo");
-    });
-  }, []);
-  useEffect(() => {
-    if (!isAuthenticated || !isPublicDemoSession) return;
-    const endOnPageHide = () => {
-      // sendBeacon wird vom Browser auch während des Tab-Schließens bevorzugt
-      // ausgeliefert. Falls es nicht verfügbar ist, bleibt fetch(keepalive)
-      // der sichere Fallback.
-      if (
-        typeof navigator.sendBeacon === "function" &&
-        navigator.sendBeacon(
-          "/api/public-demo/end",
-          new Blob(["{}"], { type: "application/json" })
-        )
-      ) {
-        return;
-      }
-      void fetch("/api/public-demo/end", {
-        method: "POST",
-        credentials: "same-origin",
-        keepalive: true,
-      });
-    };
-    window.addEventListener("pagehide", endOnPageHide);
-    return () => window.removeEventListener("pagehide", endOnPageHide);
-  }, [isAuthenticated, isPublicDemoSession]);
   useEffect(() => {
     const syncMuteState = () => setKlemmiMuted(getKlemmiMuted());
     window.addEventListener(KLEMMI_MUTE_EVENT, syncMuteState);
@@ -750,8 +716,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
   const allowsEventYears = productAllowsCapability(productPackageId, "event_years");
   const allowsEventCreation = allowsAdditionalEvents || allowsEventYears;
-  const productAllowsChat =
-    !isPublicDemoSession && productAllowsCapability(productPackageId, "chat");
+  const productAllowsChat = productAllowsCapability(productPackageId, "chat");
   const packageUnavailable =
     hasPackageSummary && tenantProduct.data?.isUsable === false;
   const productName = PRODUCT_PACKAGE_META[productPackageId].name;
@@ -776,16 +741,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         myPermissions.data,
         myModuleAccess.data
       )
-        .map(section => ({
-          ...section,
-          items: section.items.filter(
-            item => !isPublicDemoSession || item.href !== "/pdf-export"
-          ),
-        }))
         .filter(section => section.items.length > 0),
     [
       effectiveNavigationRole,
-      isPublicDemoSession,
       myModuleAccess.data,
       myPermissions.data,
       productPackageId,
@@ -1866,25 +1824,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <Menu className="h-5 w-5" />
         </Button>
         <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-          {isPublicDemoSession ? (
-            <a
-              href="https://mycrewmate.de/"
-              className="min-w-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-              aria-label="Zur MyCrewMate-Website"
-            >
-              <div className="truncate text-sm font-bold">MyCrewMate</div>
-              <div className="truncate text-[11px] text-muted-foreground">
-                {selectedEvent?.name ?? `Veranstaltung ${year}`}
-              </div>
-            </a>
-          ) : (
-            <div className="min-w-0">
+          <div className="min-w-0">
               <div className="truncate text-sm font-bold">MyCrewMate</div>
               <div className="truncate text-[11px] text-muted-foreground">
                 {selectedEvent?.name ?? `Veranstaltung ${year}`}
               </div>
             </div>
-          )}
         </div>
         <Select
           value={String(year)}
@@ -1914,23 +1859,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         >
           <SheetHeader className="items-center bg-white px-4 py-3 text-center">
             <SheetTitle className="flex justify-center">
-              {isPublicDemoSession ? (
-                <a href="https://mycrewmate.de/" aria-label="Zur MyCrewMate-Website">
-                  <img
-                    {...logoLoading}
-                    src={MYCREWMATE_WORDMARK}
-                    alt="MyCrewMate"
-                    className="h-10 w-auto max-w-[190px] bg-transparent object-contain"
-                  />
-                </a>
-              ) : (
-                <img
+              <img
                   {...logoLoading}
                   src={MYCREWMATE_WORDMARK}
                   alt="MyCrewMate"
                   className="h-10 w-auto max-w-[190px] bg-transparent object-contain"
                 />
-              )}
             </SheetTitle>
             <SheetDescription className="mt-1 text-center text-[11px] font-medium tracking-[0.08em] text-slate-600">
               VEREINS- &amp; EVENTPLANUNG
@@ -1942,15 +1876,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </span>
             </div>
           </SheetHeader>
-          {!isPublicDemoSession && (
-            <div className="flex min-h-10 items-center justify-center border-y border-slate-200 bg-slate-50 px-3 py-1.5">
+          <div className="flex min-h-10 items-center justify-center border-y border-slate-200 bg-slate-50 px-3 py-1.5">
               <OnlinePresenceBadge
                 counts={onlinePresence.counts}
                 onOpenChat={productAllowsChat ? openChatWidget : undefined}
                 className="min-h-7 max-w-full"
               />
             </div>
-          )}
           <div className="border-b p-3">
             {LOCAL_TENANT_SWITCHER_ENABLED && user?.role === "admin" && tenants.data && (
               <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50/70 p-2.5">
@@ -2077,15 +2009,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </span>
               </button>
             )}
-            {!isPublicDemoSession && (
-              <div className="mt-2 border-t pt-2">
+            <div className="mt-2 border-t pt-2">
                 <Label className="mb-1 block text-xs text-muted-foreground">
                   Projektstand
                 </Label>
                 <LazySaveLoadControls onAction={() => setMobileMenuOpen(false)} />
               </div>
-            )}
-            {!isPublicDemoSession && !pwaInstalled && (
+            {!pwaInstalled && (
               deferredInstallPrompt ? (
                 <Button
                   type="button"
@@ -2215,23 +2145,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           )}
         >
         <div className="flex min-h-24 flex-col items-center px-4 py-3 text-slate-950">
-          {isPublicDemoSession ? (
-            <a href="https://mycrewmate.de/" aria-label="Zur MyCrewMate-Website">
-              <img
-                {...logoLoading}
-                src={MYCREWMATE_WORDMARK}
-                alt="MyCrewMate"
-                className="h-10 w-auto max-w-[210px] bg-transparent object-contain"
-              />
-            </a>
-          ) : (
-            <img
+          <img
               {...logoLoading}
               src={MYCREWMATE_WORDMARK}
               alt="MyCrewMate"
               className="h-10 w-auto max-w-[210px] bg-transparent object-contain"
             />
-          )}
           <div className="mt-1 w-full text-center text-[11px] font-medium tracking-[0.08em] text-slate-600">
             VEREINS- &amp; EVENTPLANUNG
           </div>
@@ -2242,15 +2161,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </span>
           </div>
         </div>
-        {!isPublicDemoSession && (
-          <div className="flex min-h-10 items-center justify-center border-y border-slate-200 bg-white/35 px-3 py-1.5">
+        <div className="flex min-h-10 items-center justify-center border-y border-slate-200 bg-white/35 px-3 py-1.5">
             <OnlinePresenceBadge
               counts={onlinePresence.counts}
               onOpenChat={productAllowsChat ? openChatWidget : undefined}
               className="min-h-7 max-w-full"
             />
           </div>
-        )}
 
         <div className="border-b p-3">
           {LOCAL_TENANT_SWITCHER_ENABLED && user?.role === "admin" && tenants.data && (
@@ -2372,14 +2289,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </span>
             </button>
           )}
-          {!isPublicDemoSession && (
-            <div className="mt-2 border-t pt-2">
+          <div className="mt-2 border-t pt-2">
               <Label className="mb-1 block text-xs text-muted-foreground">
                 Projektstand
               </Label>
               <LazySaveLoadControls />
             </div>
-          )}
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 pb-2 pt-1.5 space-y-0.5">
@@ -2504,17 +2419,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </div>
             )}
           </div>
-          {isPublicDemoSession && (
-            <aside className="mb-5 flex flex-col gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-950 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-black">Vereinsdemo · temporäre fiktive Daten</p>
-                <p className="mt-0.5 text-xs leading-5 text-orange-900">Du arbeitest in der echten App. Änderungen bleiben nur in dieser Testumgebung und werden beim Verlassen gelöscht. Speichern, Laden, Dateien, PDFs, Freigaben und WhatsApp sind hier bewusst deaktiviert.</p>
-              </div>
-              <Button type="button" variant="outline" size="sm" className="shrink-0 border-orange-300 bg-white text-orange-950 hover:bg-orange-100" onClick={finishPublicDemo}>
-                Demo beenden
-              </Button>
-            </aside>
-          )}
+
           {isReadOnlyPlanningAccess && (
             <aside
               data-slot="readonly-access-notice"

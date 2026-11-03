@@ -808,75 +808,6 @@ function CakeDonationAction({
   );
 }
 
-type DemoLockedHelperActionKind = "whatsapp" | "pdf";
-
-/**
- * Öffentliche Vereinsdemos zeigen die späteren Helferaktionen bewusst mit
- * Schloss. So können Klemmi und die Oberfläche den Ablauf erklären, ohne dass
- * aus einer fiktiven Planung eine echte Nachricht oder PDF entstehen kann.
- */
-function DemoLockedHelperAction({
-  kind,
-  helperName,
-  mobile = false,
-  compact = false,
-  klemmiTarget,
-  klemmiHelperId,
-}: {
-  kind: DemoLockedHelperActionKind;
-  helperName: string;
-  mobile?: boolean;
-  compact?: boolean;
-  klemmiTarget?: string;
-  klemmiHelperId?: number;
-}) {
-  const isWhatsApp = kind === "whatsapp";
-  const label = isWhatsApp
-    ? "Aufgabenplan per WhatsApp an Helfer senden"
-    : "Persönliche Aufgaben-PDF herunterladen";
-  const unavailableHint = isWhatsApp
-    ? "In dieser fiktiven Vereinsdemo wird kein WhatsApp-Versand vorbereitet oder versendet."
-    : "In dieser fiktiven Vereinsdemo wird keine persönliche PDF erstellt oder heruntergeladen.";
-
-  return (
-    <button
-      type="button"
-      data-klemmi-target={klemmiTarget}
-      data-klemmi-helper-id={klemmiHelperId}
-      aria-disabled="true"
-      title={`${label} – in dieser Demo nicht verfügbar (Klick für Hinweis)`}
-      aria-label={`${label} für ${helperName} – in dieser Demo nicht verfügbar`}
-      onClick={() => toast.info(unavailableHint)}
-      className={cn(
-        "relative inline-flex shrink-0 items-center justify-center rounded-md bg-transparent p-1 text-slate-500 opacity-55 transition-transform duration-150 ease-out hover:bg-slate-100 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:scale-95",
-        mobile
-          ? "h-11 min-h-11 w-11 min-w-11"
-          : compact
-            ? "h-9 w-9"
-            : HELPER_ACTION_ICON_BUTTON_CLASS
-      )}
-    >
-      {isWhatsApp ? (
-        <MessageCircle
-          className={cn(mobile ? "size-5" : compact ? "size-4" : "size-5", "text-[#25D366] grayscale")}
-          aria-hidden="true"
-        />
-      ) : (
-        <FileDown
-          className={cn(mobile ? "size-5" : compact ? "size-4" : "size-5", "text-blue-600 grayscale")}
-          aria-hidden="true"
-        />
-      )}
-      <span
-        className="absolute -bottom-0.5 -right-0.5 inline-flex size-3.5 items-center justify-center rounded-full bg-slate-700 text-white shadow-sm"
-        aria-hidden="true"
-      >
-        <LockKeyhole className="size-2.5" />
-      </span>
-    </button>
-  );
-}
-
 export default function Helpers() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [, setLocation] = useLocation();
@@ -897,8 +828,6 @@ export default function Helpers() {
     : confirmationFilter;
   const utils = trpc.useUtils();
   const { user } = useAuth();
-  const isPublicDemoSession =
-    user?.openId.startsWith("tenant-admin:demo-session-") === true;
   const { isTenantAdmin } = useTenantAdministration();
   const isMobileView = useMobileViewMode();
   const [viewMode, setViewMode] = useViewMode("helpers", "liste");
@@ -1624,30 +1553,24 @@ export default function Helpers() {
         </div>
         <KlemmiActionPanel
           className="lg:ml-auto lg:w-auto"
-          viewControl={<ViewModeToggle mode={viewMode} onChange={setViewMode} />}
-          guide={
-            <KlemmiHelperGuide
+          viewControl=<ViewModeToggle mode={viewMode} onChange={setViewMode} />
+          guide=<KlemmiHelperGuide
               helperDialogOpen={newHelperDialogOpen}
               guideHelperId={displayedHelpers[0]?.id ?? null}
               viewMode={viewMode}
               currentPackageId={currentPackageId}
-              isPublicDemoSession={isPublicDemoSession}
               onOpenHelperDialog={openNewHelperDialog}
               onCloseHelperDialog={() => setNewHelperDialogOpen(false)}
               onGuideOpenChange={() => undefined}
               onViewModeChange={setViewMode}
             />
-          }
-          secondaryActions={
-            <PlanResetDialogButton
+          secondaryActions=<PlanResetDialogButton
               area="helpers"
               label="Helfer"
               onCompleted={invalidate}
               triggerClassName="h-10 px-3"
             />
-          }
-          primaryAction={
-            <Button
+          primaryAction=<Button
               type="button"
               data-klemmi-target="new-helper"
               className="h-10 bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
@@ -1656,7 +1579,6 @@ export default function Helpers() {
               <Plus className="mr-2 h-4 w-4" />
               Neuer Helfer
             </Button>
-          }
         />
       </div>
 
@@ -2023,10 +1945,7 @@ export default function Helpers() {
                     disabled={!allowsDonations}
                     onClick={() => openCakeDonation(helper.name)}
                   />
-                  {isPublicDemoSession ? <>
-                    <DemoLockedHelperAction kind="pdf" helperName={helper.name} mobile />
-                    <DemoLockedHelperAction kind="whatsapp" helperName={helper.name} mobile />
-                  </> : <>
+                  <>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -2058,7 +1977,7 @@ export default function Helpers() {
                     >
                       <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
                     </Button>
-                  </>}
+                  </>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -2366,10 +2285,7 @@ export default function Helpers() {
                         disabled={!allowsDonations}
                         onClick={() => openCakeDonation(helper.name)}
                       />
-                      {isPublicDemoSession ? <>
-                        <DemoLockedHelperAction kind="pdf" helperName={helper.name} />
-                        <DemoLockedHelperAction kind="whatsapp" helperName={helper.name} />
-                      </> : <>
+                      <>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -2395,7 +2311,7 @@ export default function Helpers() {
                         >
                           <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
                         </Button>
-                      </>}
+                      </>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -2695,22 +2611,7 @@ export default function Helpers() {
                             klemmiHelperId={helper.id}
                             onClick={() => openCakeDonation(helper.name)}
                           />
-                          {isPublicDemoSession ? <>
-                            <DemoLockedHelperAction
-                              kind="whatsapp"
-                              helperName={helper.name}
-                              compact
-                              klemmiTarget="helper-action-whatsapp"
-                              klemmiHelperId={helper.id}
-                            />
-                            <DemoLockedHelperAction
-                              kind="pdf"
-                              helperName={helper.name}
-                              compact
-                              klemmiTarget="helper-action-pdf"
-                              klemmiHelperId={helper.id}
-                            />
-                          </> : <>
+                          <>
                             <Button
                               type="button"
                               variant="ghost"
@@ -2742,7 +2643,7 @@ export default function Helpers() {
                             >
                               <FileDown className="size-4 text-blue-600" />
                             </Button>
-                          </>}
+                          </>
                           <Button
                             type="button"
                             variant="ghost"

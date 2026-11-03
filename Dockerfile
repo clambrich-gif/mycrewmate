@@ -39,6 +39,7 @@ COPY --from=build /app/package.json ./
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/client/public ./client/public
+COPY --from=build /app/scripts ./scripts
 # Servergebundene Medien werden nicht in den Vite-Build übernommen und müssen
 # deshalb für eigene Assetrouten explizit im schlanken Runtime-Image liegen.
 COPY --from=build /app/server/assets ./server/assets

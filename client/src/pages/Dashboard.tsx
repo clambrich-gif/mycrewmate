@@ -26,7 +26,6 @@ import {
 import {
   createDashboardKlemmiSteps,
   createPersonalDashboardKlemmiSteps,
-  createPublicDemoDashboardKlemmiSteps,
 } from "@/lib/dashboard-klemmi-tour";
 import {
   dashboardTargetHref,
@@ -1044,23 +1043,6 @@ function DailyReadinessCard({
 const DEFAULT_DASHBOARD_COUNTER_LOGO =
   "/brand/dashboard-counter-default-logo.png";
 const MAX_EVENT_LOGO_BYTES = 3_000_000;
-const PUBLIC_DEMO_GUIDE_SESSION_KEY = "mycrewmate:public-demo-guide";
-const PUBLIC_DEMO_GUIDE_COOKIE = "mycrewmate_public_demo_guide";
-
-function hasPublicDemoGuideCookie() {
-  return document.cookie
-    .split(";")
-    .some(cookie => cookie.trim() === `${PUBLIC_DEMO_GUIDE_COOKIE}=1`);
-}
-
-function clearPublicDemoGuideMarker() {
-  try {
-    window.sessionStorage.removeItem(PUBLIC_DEMO_GUIDE_SESSION_KEY);
-  } catch {
-    // Der Cookie-Merker bleibt unabhängig von Webspeicherfehlern löschbar.
-  }
-  document.cookie = `${PUBLIC_DEMO_GUIDE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
-}
 
 function EventCountdownWidget({
   event,
@@ -1076,18 +1058,15 @@ function EventCountdownWidget({
   };
   packageId: ProductPackageId;
 }) {
-  const { user } = useAuth();
-  const isPublicDemoSession =
-    user?.openId.startsWith("tenant-admin:demo-session-") === true;
   const { isTenantAdmin: canManageLogo } = useTenantAdministration();
   const allowsCustomBranding = productAllowsCapability(
     packageId,
     "custom_branding"
   );
   const canManageEventLogo =
-    !isPublicDemoSession && canManageLogo && allowsCustomBranding;
-  const canInteractWithEventLogo = !isPublicDemoSession && canManageLogo;
-  const canManageEvent = !isPublicDemoSession && canManageLogo;
+    canManageLogo && allowsCustomBranding;
+  const canInteractWithEventLogo = canManageLogo;
+  const canManageEvent = canManageLogo;
   const [upgradeCapability, setUpgradeCapability] = useState<
     "custom_branding" | null
   >(null);
@@ -1243,7 +1222,7 @@ function EventCountdownWidget({
         aria-label="Event-Zähler mit Tagesimpuls"
       >
         <div className="flex min-h-[4.25rem] items-center justify-center gap-2 bg-gradient-to-r from-sky-50 via-white to-orange-50 px-2 py-1.5 sm:min-h-[3.95rem]">
-          {!isPublicDemoSession && <input
+          <input
             ref={logoInputRef}
             type="file"
             accept="image/png,image/jpeg"
@@ -1252,25 +1231,21 @@ function EventCountdownWidget({
               onLogoSelected(event.target.files?.[0]);
               event.target.value = "";
             }}
-          />}
+          />
           <button
             type="button"
             className="group relative mx-auto grid size-[3.4rem] place-items-center overflow-hidden rounded-full border border-black/35 bg-white shadow-sm transition-transform duration-150 hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-default disabled:hover:scale-100"
             onClick={selectLogo}
             disabled={!canInteractWithEventLogo || uploadLogo.isPending}
             title={
-              isPublicDemoSession
-                ? "Eventlogo der Testdemo – Upload deaktiviert"
-                : canManageEventLogo
+              canManageEventLogo
                 ? "Eventlogo für Dashboard und PDFs ändern"
                 : canManageLogo
                     ? "Eigenes Eventlogo ab Pro verfügbar"
                     : "Eventlogo dieser Veranstaltung"
             }
             aria-label={
-              isPublicDemoSession
-                ? "Eventlogo der Testdemo – Upload deaktiviert"
-                : canManageEventLogo
+              canManageEventLogo
                 ? "Eventlogo für Dashboard und PDFs ändern"
                 : canManageLogo
                     ? "Eigenes Eventlogo ab Pro verfügbar"
@@ -1760,29 +1735,6 @@ function PersonalDashboardContent({
 export default function Dashboard() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
-  const isPublicDemoSession =
-    user?.openId.startsWith("tenant-admin:demo-session-") === true;
-  const [demoGuideRequested] = useState(() => {
-    const url = new URL(window.location.href);
-    const requestedByUrl = url.searchParams.get("demoGuide") === "1";
-    try {
-      if (requestedByUrl) {
-        // React prüft Zustandsinitialisierer im Entwicklungsmodus absichtlich
-        // mehrfach. Der kurze Merker verhindert, dass der erste Durchlauf den
-        // URL-Parameter entfernt und der zweite daraus fälschlich „nein“ macht.
-        window.sessionStorage.setItem(PUBLIC_DEMO_GUIDE_SESSION_KEY, "1");
-        url.searchParams.delete("demoGuide");
-        window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-      }
-      return (
-        requestedByUrl ||
-        hasPublicDemoGuideCookie() ||
-        window.sessionStorage.getItem(PUBLIC_DEMO_GUIDE_SESSION_KEY) === "1"
-      );
-    } catch {
-      return requestedByUrl;
-    }
-  });
   const detailsLayout = useDashboardDetailsLayout();
   const { canReadModule, isTenantAdmin, isPrimaryTenantAdmin } =
     useTenantAdministration();
@@ -1804,12 +1756,7 @@ export default function Dashboard() {
   const [isPersonalDashboard, setIsPersonalDashboard] = useState(
     () => !isEventPass && isDefaultMyTasks
   );
-  // Öffentliche Demos starten immer in der Vereinssicht. Die persönliche
-  // Ansicht ist eine lokale Komforteinstellung und darf einen bewusst
-  // gewählten Demo-Rundgang weder verdecken noch dessen Klemmi-Fenster
-  // verhindern – auch nicht, wenn jemand dieselbe Demo zuvor ausprobiert hat.
-  const isShowingPersonalDashboard =
-    !isPublicDemoSession && isPersonalDashboard;
+  const isShowingPersonalDashboard = isPersonalDashboard;
   const [showPersonalDashboardExplanation, setShowPersonalDashboardExplanation] =
     useState(false);
   const { data: s, isLoading } = trpc.dashboard.stats.useQuery();
@@ -1875,7 +1822,7 @@ export default function Dashboard() {
     }
   );
   useEffect(() => {
-    if (isPublicDemoSession || isEventPass) {
+    if (isEventPass) {
       setIsPersonalDashboard(false);
       setShowPersonalDashboardExplanation(false);
       return;
@@ -1890,11 +1837,10 @@ export default function Dashboard() {
     isDefaultMyTasks,
     hasSeenPersonalDashboardExplanation,
     isEventPass,
-    isPublicDemoSession,
   ]);
   const selectDashboardView = (mode: "club" | "personal") => {
     const personal = mode === "personal";
-    if ((isEventPass || isPublicDemoSession) && personal) return;
+    if (isEventPass && personal) return;
     setIsPersonalDashboard(personal);
     setDefaultMyTasks(personal);
     if (personal && !hasSeenPersonalDashboardExplanation) {
@@ -2082,14 +2028,6 @@ export default function Dashboard() {
     currentPackageId: tenantProduct.data?.packageId ?? "event_pass",
     detailsLayout,
   });
-  const publicDemoKlemmiSteps = createPublicDemoDashboardKlemmiSteps({
-    hasEventPeriod: Boolean(currentEvent.startDate),
-    hasPriorityActions: priorityActions.length > 0,
-    hasHelpers: helpers.length > 0,
-    canUseMapsGpx,
-    canUseDonations: allowsDonations,
-    currentPackageId: tenantProduct.data?.packageId ?? "event_pass",
-  });
   const personalDashboardKlemmiSteps = createPersonalDashboardKlemmiSteps();
   const activePotentialDay = workloadFilter
     ? dailyReadiness.find(day => day.day === workloadFilter.day)
@@ -2130,7 +2068,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       <Dialog
-        open={showPersonalDashboardExplanation && !isPublicDemoSession}
+        open={showPersonalDashboardExplanation}
         onOpenChange={open => {
           if (!open) closePersonalDashboardExplanation();
         }}
@@ -2182,7 +2120,7 @@ export default function Dashboard() {
               ? "Deine zugeordneten Aufgaben und Einsätze – klar auf deinen Bereich fokussiert."
               : "Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen werden automatisch aus den Planungsdaten berechnet."}
           </p>
-          {!isEventPass && !isPublicDemoSession && <div
+          {!isEventPass && <div
             className="mt-3 inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1 shadow-sm"
             role="group"
             aria-label="Dashboard-Ansicht auswählen"
@@ -2226,62 +2164,17 @@ export default function Dashboard() {
         )}
         {!isShowingPersonalDashboard && (
           <div className="flex w-full flex-col items-stretch gap-2 lg:w-[21rem] lg:items-end">
-            {isPublicDemoSession && (
-              <p className="max-w-xs text-right text-xs leading-5 text-slate-600">
-                Neu in der Demo? Klemmi zeigt dir Dashboard, Einsatzplan und die wichtigsten Bereiche in weniger als einer Minute.
-              </p>
-            )}
+
             <div className="flex w-full flex-wrap items-center justify-end gap-1.5">
             <KlemmiSurfaceGuide
-              guideId={isPublicDemoSession ? "demo-dashboard" : "dashboard"}
-              audioGuideId={isPublicDemoSession ? "dashboard" : undefined}
+              guideId="dashboard"
               title="Dein Dashboard auf einen Blick"
               introText="Hier laufen die Informationen aus deiner Planung zusammen. Ich zeige dir jetzt nur die Bereiche, die auf diesem Dashboard wirklich sichtbar sind."
-              steps={isPublicDemoSession ? publicDemoKlemmiSteps : dashboardKlemmiSteps}
+              steps={dashboardKlemmiSteps}
               successSignal={null}
-              completionTitle={isPublicDemoSession ? "Jetzt kann es losgehen!" : "Alles im Blick!"}
-              completionText={isPublicDemoSession ? "Öffne als Nächstes links den Einsatzplan, die Helferliste oder – in der Pro-Demo – Orte und Standorte. Die Musterdaten bleiben nur für diese Übungsdemo da." : "Du weißt jetzt, wo das Dashboard den aktuellen Planungsstand zeigt – und welche Eingaben die einzelnen Übersichten füllen."}
-              completionActionLabel={isPublicDemoSession ? "Jetzt selbst ausprobieren" : undefined}
-              manualStartPrompt={
-                isPublicDemoSession && demoGuideRequested
-                  ? {
-                      eyebrow: "Willkommen in der Vereinsdemo",
-                      title: "Klemmi zeigt dir diese Demo in 4 kurzen Schritten",
-                      text: "Du siehst zuerst den Überblick, dann Helfer und Einsatzplan sowie Orte, Material und Aufgaben. Danach kannst du alles in deinem Tempo selbst ausprobieren.",
-                      steps: [
-                        "Willkommen in der Musterplanung",
-                        "Dashboard und Veranstaltungsüberblick",
-                        "Helfer und Einsatzplan",
-                        "Orte, Material und Aufgaben",
-                      ],
-                      startLabel: "Rundgang mit Ton beginnen",
-                      mutedStartLabel: "Rundgang ohne Ton beginnen",
-                      skipLabel: "Ohne Erklärung selbst ausprobieren",
-                      mutedText: "Du kannst den Rundgang ohne Ton beginnen oder die Stimme erst einschalten.",
-                      unmuteLabel: "Klemmi-Stimme einschalten",
-                    }
-                  : undefined
-              }
-              manualStartAudioKey={
-                 isPublicDemoSession && demoGuideRequested
-                   ? "dashboard-intro"
-                   : undefined
-               }
-               openingAudioKey={
-                 isPublicDemoSession ? "public-demo-opening" : undefined
-               }
-               onManualStartPromptDismiss={
-                 isPublicDemoSession && demoGuideRequested
-                   ? () => {
-                       try {
-                         clearPublicDemoGuideMarker();
-                       } catch {
-                         // Die URL-Übergabe funktioniert unabhängig vom Webspeicher.
-                       }
-                     }
-                   : undefined
-               }
-               voiceMuted={klemmiMuted}
+              completionTitle="Alles im Blick!"
+              completionText="Du weißt jetzt, wo das Dashboard den aktuellen Planungsstand zeigt – und welche Eingaben die einzelnen Übersichten füllen."
+              voiceMuted={klemmiMuted}
               onVoiceMutedChange={muted => {
                 setKlemmiMuted(muted);
                 persistKlemmiMuted(muted);

@@ -7,7 +7,7 @@ const read = (relative: string) =>
   fs.readFileSync(path.join(root, relative), "utf8");
 
 describe("öffentliche Preis- und Pilotseiten", () => {
-  it("trennt reguläre Produktpreise, Pilotanfrage und fiktive Vereinsdemo", () => {
+  it("erhält reguläre Produktpreise und Pilotanfrage ohne öffentliche Vereinsdemo", () => {
     const app = read("client/src/App.tsx");
     const offer = read("client/src/pages/OfferDemo.tsx");
     const pilot = read("client/src/pages/PilotHomepageDraft.tsx");
@@ -21,8 +21,8 @@ describe("öffentliche Preis- und Pilotseiten", () => {
     expect(offer).toContain("ausschließlich mit einer benannten Organisation vereinbart");
     expect(offer).toContain("private Feiern, Firmenveranstaltungen oder gewerbliche Eventdienstleistungen");
     expect(offer).toContain("keinen Anspruch auf Annahme, Freischaltung oder ein bestimmtes Paket");
-    expect(offer).toContain('href="/vereinsdemo"');
-    expect(offer).toContain("Fiktive Vereinsdemo ausprobieren");
+    expect(offer).not.toContain('href="/vereinsdemo"');
+    expect(offer).not.toContain("Fiktive Vereinsdemo ausprobieren");
     expect(offer).toContain("Reguläre Preise ab 01.01.2027");
     expect(offer).toContain("Alle genannten Preise sind Endpreise");
     expect(offer).toContain("Buchung und Zahlung starten");
@@ -40,7 +40,8 @@ describe("öffentliche Preis- und Pilotseiten", () => {
 
     expect(pilot).toContain('name: "Enterprise"');
     expect(pilot).not.toContain('name: "Ultimate"');
-    expect(pilot).toContain("Fiktive Vereinsdemo ausprobieren");
+    expect(pilot).not.toContain("Fiktive Vereinsdemo ausprobieren");
+    expect(pilot).not.toContain('href="/vereinsdemo"');
     expect(pilot).toContain("Reguläre Preise ab 01.01.2027 ansehen");
     expect(pilot).toContain('name="phone"');
     expect(pilot).toContain('name="organizationType"');

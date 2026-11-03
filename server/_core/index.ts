@@ -15,11 +15,7 @@ import { registerTenantLogoRoutes } from "../tenant-logo-routes";
 import { registerGameAssetRoutes } from "../game-asset-routes";
 import { handleTeamNotesCleanupHeartbeat } from "../chat-cleanup-heartbeat";
 import { handleProductExpiryReminderHeartbeat } from "../product-expiry-heartbeat";
-import {
-  handlePublicDemoAccess,
-  handlePublicDemoCleanupHeartbeat,
-  handlePublicDemoEnd,
-} from "../public-demo-cleanup";
+import { registerRetiredPublicDemoRoutes } from "../public-demo";
 import {
   canonicalMarketingRedirectUrl,
   shouldRedirectProtectiveMarketingDomain,
@@ -119,6 +115,9 @@ async function startServer() {
     next();
   });
 
+  // Vor Parser, API und SPA: auch alte direkte Demo-Adressen sind endgültig geschlossen.
+  registerRetiredPublicDemoRoutes(app);
+
   // Projekt- und Excel-Dateien plus Base64-/JSON-Overhead; größere Requests werden früh abgewiesen.
   app.use(express.json({ limit: "25mb" }));
   app.use(express.urlencoded({ limit: "25mb", extended: true }));
@@ -145,9 +144,6 @@ async function startServer() {
   registerMarketingVideoRoutes(app);
   app.post("/api/scheduled/team-notes-cleanup", handleTeamNotesCleanupHeartbeat);
   app.post("/api/scheduled/product-expiry-reminders", handleProductExpiryReminderHeartbeat);
-  app.post("/api/scheduled/public-demo-cleanup", handlePublicDemoCleanupHeartbeat);
-  app.get("/api/public-demo/access", handlePublicDemoAccess);
-  app.post("/api/public-demo/end", handlePublicDemoEnd);
 
   // tRPC API
   app.use(

@@ -56,7 +56,6 @@ type KlemmiHelperGuideProps = {
   guideHelperId: number | null;
   viewMode: "liste" | "kacheln";
   currentPackageId: ProductPackageId;
-  isPublicDemoSession?: boolean;
   onOpenHelperDialog: () => void;
   onCloseHelperDialog: () => void;
   onGuideOpenChange: (open: boolean) => void;
@@ -228,14 +227,12 @@ const guideSteps: GuideStep[] = [
 
 /** Paketbewusste Führung: gesperrte Helferfunktionen werden als Pro-Vorteil erklärt. */
 export function getHelperGuideSteps(
-  currentPackageId: ProductPackageId,
-  isPublicDemoSession = false
+  currentPackageId: ProductPackageId
 ): GuideStep[] {
   const donationContext = getKlemmiFeatureContext("donations", currentPackageId);
   const whatsappContext = getKlemmiFeatureContext("whatsapp_templates", currentPackageId);
   const isEventPass = currentPackageId === "event_pass";
   if (
-    !isPublicDemoSession &&
     !donationContext.isLocked &&
     !whatsappContext.isLocked &&
     !isEventPass
@@ -244,22 +241,6 @@ export function getHelperGuideSteps(
   }
 
   return guideSteps.map(step => {
-    if (isPublicDemoSession && step.key === "action-whatsapp") {
-      return {
-        ...step,
-        title: "WhatsApp in der Demo sichtbar, aber gesperrt",
-        text: "Das grüne WhatsApp-Zeichen zeigt den späteren Versandweg. In dieser fiktiven Vereinsdemo ist es bewusst mit einem Schloss gesperrt: Es wird keine Nachricht vorbereitet oder versendet.",
-        audioKey: "action-whatsapp-demo",
-      };
-    }
-    if (isPublicDemoSession && step.key === "action-pdf") {
-      return {
-        ...step,
-        title: "Persönliche PDF in der Demo sichtbar, aber gesperrt",
-        text: "Das blaue PDF-Zeichen steht für den persönlichen Helferplan. In dieser fiktiven Vereinsdemo ist es bewusst mit einem Schloss gesperrt: Es wird keine Datei erstellt oder heruntergeladen.",
-        audioKey: "action-pdf-demo",
-      };
-    }
     if (step.key === "contact" && isEventPass) {
       return {
         ...step,
@@ -329,7 +310,6 @@ export function KlemmiHelperGuide({
   guideHelperId,
   viewMode,
   currentPackageId,
-  isPublicDemoSession = false,
   onOpenHelperDialog,
   onCloseHelperDialog,
   onGuideOpenChange,
@@ -346,8 +326,8 @@ export function KlemmiHelperGuide({
   const returnViewModeRef = useRef<"liste" | "kacheln" | null>(null);
   const { muted, isSpeaking, speak, playClip, toggleMuted, cancel } = useKlemmiVoice();
   const steps = useMemo(
-    () => getHelperGuideSteps(currentPackageId, isPublicDemoSession),
-    [currentPackageId, isPublicDemoSession]
+    () => getHelperGuideSteps(currentPackageId),
+    [currentPackageId]
   );
   const step = steps[stepIndex];
   const Icon = stepIcon(step.key);
@@ -500,9 +480,7 @@ export function KlemmiHelperGuide({
           setOpeningPending(true);
           setOpen(true);
           onGuideOpenChange(true);
-          const opening = isPublicDemoSession
-            ? playClip("public-demo-opening")
-            : playClip("helpers-opening");
+          const opening = playClip("helpers-opening");
           void opening.finally(() => setOpeningPending(false));
         }}
       >

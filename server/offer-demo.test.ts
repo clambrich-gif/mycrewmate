@@ -31,6 +31,8 @@ describe("öffentliche MyCrewMate-Angebotsseite", () => {
     expect(offerDemo).not.toContain("Abo");
     expect(offerDemo).not.toContain("Abo-Falle");
     expect(offerDemo).not.toContain("trpc.");
+    expect(offerDemo).not.toContain("Vereinsdemo");
+    expect(offerDemo).not.toContain('href="/demozugang"');
   });
 
   it("erklärt den Kundennutzen je Paket, vergleicht die Stufen und zeigt passende Vereinswelten", () => {
@@ -83,7 +85,7 @@ describe("öffentliche MyCrewMate-Angebotsseite", () => {
     expect(offerDemo).toContain("Radsportveranstaltungsplanung");
   });
 
-  it("hängt die Demo isoliert außerhalb des geschützten Arbeitslayouts ein", () => {
+  it("hängt die Angebotsseite isoliert außerhalb des geschützten Arbeitslayouts ein", () => {
     const app = source("client/src/App.tsx");
 
     expect(app).toContain(

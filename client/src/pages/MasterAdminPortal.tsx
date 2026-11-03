@@ -289,20 +289,6 @@ const PUBLIC_REACH_METRIC_META: Array<{
     accent: "border-orange-200 bg-orange-50/60 text-orange-800",
   },
   {
-    metric: "club_demo_page_view",
-    label: "Vereinsdemo",
-    description: "Demoauswahl geöffnet",
-    icon: BarChart3,
-    accent: "border-violet-200 bg-violet-50/60 text-violet-800",
-  },
-  {
-    metric: "club_demo_started",
-    label: "Demo gestartet",
-    description: "Temporäre Demo erfolgreich erstellt",
-    icon: Play,
-    accent: "border-indigo-200 bg-indigo-50/60 text-indigo-800",
-  },
-  {
     metric: "pilot_video_started",
     label: "Pilotvideo",
     description: "Erklärfilm bewusst gestartet",
@@ -2205,7 +2191,7 @@ export default function MasterAdminPortal() {
                 Öffentliche Reichweite
               </CardTitle>
               <CardDescription>
-                Anonyme Aufrufzahlen für Startseite, Pilot und Vereinsdemo.
+                Anonyme Aufrufzahlen für Startseite, Pilotanfrage und Pilotvideo.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

@@ -11,7 +11,7 @@ export const MARKETING_OG_IMAGE = `${CANONICAL_MARKETING_ORIGIN}/landing/festiva
  * Suchmaschinen können damit erkennen, wann die kanonische Startseite zuletzt
  * substanziell aktualisiert wurde.
  */
-export const MARKETING_SITEMAP_LAST_MODIFIED = "2026-10-15";
+export const MARKETING_SITEMAP_LAST_MODIFIED = "2026-11-03";
 /** Öffentlicher Eigentumsnachweis von Bing; kein Besucherdaten- oder Trackingtag. */
 export const BING_WEBMASTER_VERIFICATION_CONTENT = "84ECCF4B66C434F1AD1130AFD84681C6";
 
@@ -35,13 +35,6 @@ const PUBLIC_MARKETING_PAGES: Record<string, PublicPageMetadata> = {
     description: MARKETING_PAGE_DESCRIPTION,
     canonicalPath: "/",
     robots: "index,follow",
-  },
-  "/vereinsdemo": {
-    title: "Vereinsdemo · MyCrewMate",
-    description:
-      "Erleben Sie MyCrewMate in einer datensparsamen Musterdemo für die Vereins- und Eventplanung.",
-    canonicalPath: "/vereinsdemo",
-    robots: "noindex,follow",
   },
   "/impressum": {
     title: "Impressum · MyCrewMate",

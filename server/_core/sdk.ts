@@ -14,6 +14,7 @@ import {
   SHARED_PASSWORD_OPEN_ID,
 } from "../password-auth";
 import { sessionPresenceKey } from "../session-presence";
+import { isPublicDemoOpenId } from "../public-demo";
 import { ENV } from "./env";
 import type {
   ExchangeTokenRequest,
@@ -309,6 +310,12 @@ class SDKServer {
 
     if (!session) {
       throw ForbiddenError("Invalid session cookie");
+    }
+
+    // Die öffentliche Vereinsdemo wurde endgültig entfernt. Auch noch gültig
+    // signierte Alt-Sitzungen dürfen keine Daten lesen oder ändern.
+    if (isPublicDemoOpenId(session.openId)) {
+      throw ForbiddenError("This access is no longer available");
     }
 
     const sessionKey = sessionPresenceKey(req);
