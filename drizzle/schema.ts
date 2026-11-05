@@ -1883,3 +1883,29 @@ export const finances = mysqlTable(
   ]
 );
 export type Finance = typeof finances.$inferSelect;
+
+/** Private Dokumentation, unabhängig von Finanzsummen. Kategorie bleibt auch
+ * beim Excel-/JSON-Restore mit neu vergebenen Finanz-IDs wiedererkennbar. */
+export const financeReceipts = mysqlTable(
+  "financeReceipts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").notNull(),
+    eventId: int("eventId").notNull(),
+    category: varchar("category", { length: 160 }).notNull(),
+    title: varchar("title", { length: 160 }).notNull(),
+    paidBy: varchar("paidBy", { length: 160 }).notNull(),
+    fileName: varchar("fileName", { length: 200 }).notNull(),
+    storageKey: varchar("storageKey", { length: 500 }).notNull(),
+    byteSize: int("byteSize").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("financeReceipts_event_category_idx").on(table.eventId, table.year, table.category),
+    foreignKey({
+      name: "financeReceipts_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+  ]
+);

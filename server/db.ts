@@ -34,6 +34,7 @@ import {
   events,
   eventYears,
   finances,
+  financeReceipts,
   gpxTracks,
   helpers,
   InsertUser,
@@ -9717,14 +9718,49 @@ export const mapFinanceWrite = ({
   ...(expenseCents === undefined ? {} : { expense: expenseCents }),
 });
 export const createFinance = async (v: FinanceWrite & { category: string }) =>
-  createYearRow(finances, mapFinanceWrite(v));
+  withPlanningWriteLock(async () => {
+    const database = (await getDb()) as DB;
+    const existing = await database.select({ id: finances.id }).from(finances)
+      .where(and(planningScope(finances), eq(finances.category, v.category))).limit(1);
+    if (existing.length) throw new Error("Diese Finanzkategorie ist bereits vorhanden.");
+    return createYearRow(finances, mapFinanceWrite(v));
+  });
+
 export const updateFinance = async (id: number, v: FinanceWrite) =>
-  ((await getDb()) as DB)
-    .update(finances)
-    .set(mapFinanceWrite(v))
-    .where(yearWhere(finances, id));
-export const deleteFinance = async (id: number) =>
-  ((await getDb()) as DB).delete(finances).where(yearWhere(finances, id));
+  withPlanningWriteLock(async () => ((await getDb()) as DB).transaction(async tx => {
+    const [existing] = await tx.select().from(finances).where(yearWhere(finances, id)).limit(1).for("update");
+    if (!existing) throw new Error("Finanzkategorie wurde nicht gefunden.");
+    if (v.category !== undefined && v.category !== existing.category) {
+      const duplicates = await tx.select({ id: finances.id }).from(finances).where(and(planningScope(finances), eq(finances.category, v.category), notEq(finances.id, id))).limit(1);
+      if (duplicates.length) throw new Error("Diese Finanzkategorie ist bereits vorhanden.");
+      await tx.update(financeReceipts).set({ category: v.category }).where(and(planningScope(financeReceipts), eq(financeReceipts.category, existing.category)));
+    }
+    return tx.update(finances).set(mapFinanceWrite(v)).where(yearWhere(finances, id));
+  }));
+
+export async function appendFinanceNote(id: number, text: string, author: string) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const [existing] = await tx.select({ note: finances.note }).from(finances).where(yearWhere(finances, id)).limit(1).for("update");
+    if (!existing) throw new Error("Finanzkategorie wurde nicht gefunden.");
+    const note = prependPreparationLogbookEntry(text, existing.note, new Date(), author);
+    return tx.update(finances).set({ note }).where(yearWhere(finances, id));
+  });
+}
+
+export async function deleteFinance(id: number) {
+  const database = (await getDb()) as DB;
+  const keys = await database.transaction(async tx => {
+    const [finance] = await tx.select().from(finances).where(yearWhere(finances, id)).limit(1).for("update");
+    if (!finance) throw new Error("Finanzkategorie wurde nicht gefunden.");
+    const receipts = await tx.select({ storageKey: financeReceipts.storageKey }).from(financeReceipts).where(and(planningScope(financeReceipts), eq(financeReceipts.category, finance.category)));
+    await tx.delete(financeReceipts).where(and(planningScope(financeReceipts), eq(financeReceipts.category, finance.category)));
+    await tx.delete(finances).where(yearWhere(finances, id));
+    return receipts.map(row => row.storageKey);
+  });
+  await Promise.all(keys.map(key => storageDelete(key).catch(() => undefined)));
+  return { success: true };
+}
 
 export type ResetArea =
   | "contacts"
@@ -9829,6 +9865,7 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
       await tx
         .delete(finances)
         .where(planningScopeFor(finances, selectedYear, selectedEventId));
+      await tx.delete(financeReceipts).where(planningScopeFor(financeReceipts, selectedYear, selectedEventId));
     });
     return;
   }
@@ -10116,6 +10153,9 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
   } as const;
   const table = tableByArea[area];
   await db.transaction(async tx => {
+    if (area === "finances") {
+      await tx.delete(financeReceipts).where(planningScopeFor(financeReceipts, selectedYear, selectedEventId));
+    }
     const rows = await tx
       .select({ id: table.id })
       .from(table)

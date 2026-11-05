@@ -1072,7 +1072,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(select).toContain("px-3 py-2 text-base");
     expect(select).toContain("md:text-sm");
     expect(helpers).toContain('"h-11 w-full text-base md:h-8 md:text-sm"');
-    expect(finances).toContain('className="h-11 w-full text-base md:h-8 md:w-28 md:text-sm"');
+    expect(finances).toContain("FinanceCategoryDialog");
+    const financeDialog = source("client/src/components/FinanceCategoryDialog.tsx");
+    expect(financeDialog).toContain('inputMode="decimal"');
+    expect(financeDialog).toContain('className="text-base"');
     expect(plan).toContain("max-h-[calc(100dvh-2rem)]");
     expect(plan).toContain("max-w-[calc(100vw-2rem)]");
     expect(plan).toContain("pb-[max(1rem,env(safe-area-inset-bottom))]");

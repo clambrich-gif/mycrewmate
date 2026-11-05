@@ -154,6 +154,12 @@ import {
 } from "@shared/legal-contract-documents";
 import { MASTER_ADMIN_ORIGIN, isMasterAdminRequestHost } from "@shared/platform-admin";
 import { storagePut, storageRead } from "./storage";
+import { prependPreparationLogbookEntry } from "../shared/preparation-logbook";
+import {
+  listFinanceReceipts, listFinancePayers, uploadFinanceReceipt,
+  downloadFinanceReceipt, removeFinanceReceipt, exportFinanceReceipts,
+  requireFinance,
+} from "./finance-documents";
 import { locationLogoUrl } from "./location-logo-routes";
 import {
   getOnlinePresenceStatus,
@@ -6826,27 +6832,53 @@ export const appRouter = router({
     create: moduleWriteProcedure("finances")
       .input(
         z.object({
-          category: z.string().min(1),
-          incomeCents: z.number().int().default(0),
-          expenseCents: z.number().int().default(0),
-          note: z.string().optional(),
+          category: z.string().trim().min(1).max(160),
+          incomeCents: z.number().int().min(0).max(2147483647).default(0),
+          expenseCents: z.number().int().min(0).max(2147483647).default(0),
+          note: z.string().trim().max(9000).optional(),
         })
       )
-      .mutation(({ input }) => db.createFinance(input)),
+      .mutation(({ ctx, input }) => db.createFinance({ ...input, note: input.note?.trim() ? prependPreparationLogbookEntry(input.note, null, new Date(), auditActor(ctx.user).name) : undefined })),
     update: moduleWriteProcedure("finances")
       .input(
         z.object({
-          id: z.number(),
-          category: z.string().optional(),
-          incomeCents: z.number().int().optional(),
-          expenseCents: z.number().int().optional(),
-          note: z.string().nullable().optional(),
+          id: z.number().int().positive(),
+          category: z.string().trim().min(1).max(160).optional(),
+          incomeCents: z.number().int().min(0).max(2147483647).optional(),
+          expenseCents: z.number().int().min(0).max(2147483647).optional(),
+          note: z.string().max(10000).nullable().optional(),
         })
       )
       .mutation(({ input }) => {
         const { id, ...r } = input;
         return db.updateFinance(id, r);
       }),
+    appendNote: moduleWriteProcedure("finances")
+      .input(z.object({ id: z.number().int().positive(), text: z.string().trim().min(1).max(9000) }))
+      .mutation(async ({ ctx, input }) => {
+        await requireFinance(input.id);
+        return db.appendFinanceNote(input.id, input.text, auditActor(ctx.user).name);
+      }),
+    receipts: moduleWriteProcedure("finances")
+      .input(z.object({ financeId: z.number().int().positive() }))
+      .query(({ input }) => listFinanceReceipts(input.financeId)),
+    payers: moduleWriteProcedure("finances").query(() => listFinancePayers()),
+    uploadReceipt: moduleWriteProcedure("finances")
+      .input(z.object({
+        financeId: z.number().int().positive(), title: z.string().trim().min(1).max(160),
+        paidBy: z.string().trim().min(1).max(160), fileName: z.string().trim().min(1).max(200),
+        pdfBase64: z.string().min(1).max(7_000_000),
+      }))
+      .mutation(({ input }) => uploadFinanceReceipt(input)),
+    downloadReceipt: moduleWriteProcedure("finances")
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ input }) => downloadFinanceReceipt(input.id)),
+    removeReceipt: moduleWriteProcedure("finances")
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ input }) => removeFinanceReceipt(input.id)),
+    exportReceipts: moduleWriteProcedure("finances")
+      .input(z.object({ financeId: z.number().int().positive().optional() }))
+      .mutation(({ input }) => exportFinanceReceipts(input.financeId)),
     remove: moduleWriteProcedure("finances")
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteFinance(input.id)),
