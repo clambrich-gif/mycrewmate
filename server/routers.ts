@@ -6535,6 +6535,10 @@ export const appRouter = router({
     list: protectedProcedure.input(z.object({ area: z.enum(["prep", "post"]), taskId: z.number().int().positive() })).query(async ({ ctx, input }) =>
       taskDocumentService.listTaskDocuments(input.area, input.taskId, await taskDocumentActor(ctx.user, input.area))
     ),
+    counts: protectedProcedure.input(z.object({ area: z.enum(["prep", "post"]) })).query(async ({ ctx, input }) => {
+      await taskDocumentActor(ctx.user, input.area);
+      return taskDocumentService.listTaskDocumentCounts(input.area);
+    }),
     payers: protectedProcedure.input(z.object({ area: z.enum(["prep", "post"]) })).query(async ({ ctx, input }) => {
       await taskDocumentActor(ctx.user, input.area);
       return taskDocumentService.listTaskDocumentPayers();

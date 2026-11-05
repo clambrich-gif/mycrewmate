@@ -9,11 +9,18 @@ const state = vi.hoisted(() => ({
   listError: null as { message: string } | null,
   payerError: null as { message: string } | null,
   listQuery: vi.fn(),
+  countsQuery: vi.fn(),
+  counts: [{ taskId: 41, count: 3 }],
   payerQuery: vi.fn(),
   upload: vi.fn(),
   download: vi.fn(),
   remove: vi.fn(),
+  removeMutation: null as
+    | ((input: { area: "prep" | "post"; id: number }) => Promise<unknown>)
+    | null,
   invalidate: vi.fn(),
+  invalidateCounts: vi.fn(),
+  buttons: new Map<string, () => void>(),
   data: {
     files: [] as any[],
     canUploadDocuments: false,
@@ -26,6 +33,19 @@ const state = vi.hoisted(() => ({
   ],
 }));
 
+vi.mock("@/components/ui/button", async importOriginal => {
+  const actual =
+    await importOriginal<typeof import("@/components/ui/button")>();
+  const { createElement } = await import("react");
+  return {
+    ...actual,
+    Button: (props: React.ComponentProps<typeof actual.Button>) => {
+      if (props["aria-label"] && props.onClick)
+        state.buttons.set(props["aria-label"], () => props.onClick!({} as any));
+      return createElement(actual.Button, props);
+    },
+  };
+});
 vi.mock("@/components/ui/dialog", async importOriginal => {
   const actual =
     await importOriginal<typeof import("@/components/ui/dialog")>();
@@ -117,6 +137,7 @@ vi.mock("@/lib/trpc", () => {
       useUtils: () => ({
         taskDocuments: {
           list: { invalidate: state.invalidate },
+          counts: { invalidate: state.invalidateCounts },
           download: { fetch: state.download },
         },
         prep: { list: { invalidate: vi.fn() } },
@@ -136,6 +157,12 @@ vi.mock("@/lib/trpc", () => {
             };
           },
         },
+        counts: {
+          useQuery: (input: unknown) => {
+            state.countsQuery(input);
+            return { data: state.counts };
+          },
+        },
         payers: {
           useQuery: (input: unknown, options: unknown) => {
             state.payerQuery(input, options);
@@ -149,7 +176,20 @@ vi.mock("@/lib/trpc", () => {
           },
         },
         upload: { useMutation: () => ({ mutateAsync: state.upload }) },
-        remove: { useMutation: () => ({ mutateAsync: state.remove }) },
+        remove: {
+          useMutation: (options?: { onSuccess?: () => void }) => {
+            const mutateAsync = async (input: {
+              area: "prep" | "post";
+              id: number;
+            }) => {
+              const result = await state.remove(input);
+              options?.onSuccess?.();
+              return result;
+            };
+            state.removeMutation = mutateAsync;
+            return { mutateAsync };
+          },
+        },
       },
       prep: module,
       post: module,
@@ -177,6 +217,7 @@ import {
   taskDocumentCanPreview,
   taskDocumentPayerLabel,
   MAX_TASK_DOCUMENT_BYTES,
+  useTaskDocumentDrafts,
   type TaskDocumentDraftController,
   type TaskDocumentFile,
 } from "../client/src/components/TaskDocumentsDialog";
@@ -187,6 +228,9 @@ beforeEach(() => {
   state.canWrite = false;
   state.listError = null;
   state.payerError = null;
+  state.buttons.clear();
+  state.removeMutation = null;
+  state.counts = [{ taskId: 41, count: 3 }];
   state.data = {
     files: [],
     canUploadDocuments: false,
@@ -194,6 +238,7 @@ beforeEach(() => {
     receiptIdentityNotice: null,
   };
   state.invalidate.mockResolvedValue(undefined);
+  state.invalidateCounts.mockResolvedValue(undefined);
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -213,6 +258,7 @@ const row = (values: Partial<TaskDocumentFile> = {}): TaskDocumentFile => ({
   mimeType: "application/pdf",
   byteSize: 21,
   createdAt: "2026-11-05T15:00:00Z",
+  canOpen: true,
   canDelete: false,
   ...values,
 });
@@ -243,19 +289,80 @@ const renderDialog = (
   );
 
 describe("task document UI — synthetic mocks only", () => {
-  it.each([Preparation, PostProcessing])(
-    "offers reader access in both stored task row and card without querying metadata on overview",
-    Page => {
+  it.each([
+    ["prep", Preparation],
+    ["post", PostProcessing],
+  ] as const)(
+    "offers reader row/card access with one area counts query and no metadata query (%s)",
+    (area, Page) => {
+      const html = renderToStaticMarkup(createElement(Page));
+      expect(
+        html.match(
+          /aria-label="Belege \/ Dokumente zu Synthetische Aufgabe \(3 Dateien\)"/g
+        ) ?? []
+      ).toHaveLength(2);
+      expect(
+        html.match(/aria-hidden="true" class="absolute -right-1 -top-1/g) ?? []
+      ).toHaveLength(2);
+      expect(state.countsQuery).toHaveBeenCalledOnce();
+      expect(state.countsQuery).toHaveBeenCalledWith({ area });
+      expect(state.listQuery).not.toHaveBeenCalled();
+      expect(state.payerQuery).not.toHaveBeenCalled();
+      expect(state.upload).not.toHaveBeenCalled();
+      expect(state.download).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([1, 7])(
+    "shows a compact count badge and accessible file count (%s)",
+    count => {
+      const html = renderToStaticMarkup(
+        createElement(TaskDocumentsButton, {
+          compact: true,
+          count,
+          taskTitle: "Testaufgabe",
+          onClick: vi.fn(),
+        })
+      );
+      expect(html).toContain(
+        `Belege / Dokumente zu Testaufgabe (${count} ${count === 1 ? "Datei" : "Dateien"})`
+      );
+      expect(html).toContain('class="absolute -right-1 -top-1');
+      expect(html).toContain(`>${count}</span>`);
+      expect(html).toContain('aria-hidden="true"');
+    }
+  );
+
+  it.each([0, undefined])(
+    "shows no badge for zero or missing counts (%s)",
+    count => {
+      const html = renderToStaticMarkup(
+        createElement(TaskDocumentsButton, {
+          compact: true,
+          count,
+          onClick: vi.fn(),
+        })
+      );
+      expect(html).not.toContain("<span");
+      expect(html).toContain('aria-label="Belege / Dokumente"');
+      expect(html).not.toContain("Dateien");
+    }
+  );
+
+  it.each([
+    ["prep", Preparation],
+    ["post", PostProcessing],
+  ] as const)(
+    "shows no row/card badges for zero counts (%s)",
+    (_area, Page) => {
+      state.counts = [{ taskId: 41, count: 0 }];
       const html = renderToStaticMarkup(createElement(Page));
       expect(
         html.match(
           /aria-label="Belege \/ Dokumente zu Synthetische Aufgabe"/g
         ) ?? []
       ).toHaveLength(2);
-      expect(state.listQuery).not.toHaveBeenCalled();
-      expect(state.payerQuery).not.toHaveBeenCalled();
-      expect(state.upload).not.toHaveBeenCalled();
-      expect(state.download).not.toHaveBeenCalled();
+      expect(html).not.toContain('class="absolute -right-1 -top-1');
     }
   );
 
@@ -273,6 +380,80 @@ describe("task document UI — synthetic mocks only", () => {
       expect(text).toContain('className="flex justify-end gap-2"');
     }
   });
+
+  it("keeps locked receipt metadata visible to a reader but offers no file actions or name-based access", () => {
+    state.data.files = [
+      row(),
+      row({
+        id: 4,
+        kind: "receipt",
+        title: "Gesperrter Beleg",
+        paidBy: "Testleser",
+        fileName: "gesperrt.pdf",
+        canOpen: false,
+      }),
+    ];
+    const html = renderDialog();
+    const locked =
+      html.match(/<li[^>]*>.*?Gesperrter Beleg.*?<\/li>/)?.[0] ?? "";
+    expect(locked).toContain("Beleg / Rechnung");
+    expect(locked).toContain("Bezahlt von: Testleser");
+    expect(locked).toContain("gesperrt.pdf");
+    expect(locked).toContain("KiB");
+    expect(locked).toContain("Hinzugefügt:");
+    expect(locked).toContain("lucide-lock");
+    expect(locked).toContain("Nur für berechtigte Personen");
+    expect(locked.slice(locked.indexOf("Gesperrter Beleg"))).not.toContain(
+      "<button"
+    );
+    expect(html).not.toContain(
+      'aria-label="Gesperrter Beleg in neuer Vorschau anzeigen"'
+    );
+    expect(html).not.toContain('aria-label="Gesperrter Beleg herunterladen"');
+    expect(html).toContain(
+      'aria-label="Sichtbares Dokument in neuer Vorschau anzeigen"'
+    );
+    expect(html).toContain('aria-label="Sichtbares Dokument herunterladen"');
+    expect(state.download).not.toHaveBeenCalled();
+  });
+
+  it("offers writer receipt access only when the server grants canOpen", () => {
+    state.canWrite = true;
+    state.data.canUploadDocuments = true;
+    state.data.files = [
+      row({ kind: "receipt", title: "Freigegebener Beleg", canOpen: true }),
+    ];
+    const html = renderDialog();
+    expect(html).toContain(
+      'aria-label="Freigegebener Beleg in neuer Vorschau anzeigen"'
+    );
+    expect(html).toContain('aria-label="Freigegebener Beleg herunterladen"');
+    expect(html).not.toContain("Nur für berechtigte Personen");
+    state.data.files[0].canOpen = false;
+    expect(renderDialog()).not.toContain(
+      'aria-label="Freigegebener Beleg herunterladen"'
+    );
+  });
+
+  it.each([false, undefined])(
+    "guards stale file handlers with strict canOpen before opening a tab or fetching (%s)",
+    canOpen => {
+      const file = row();
+      state.data.files = [file];
+      renderDialog();
+      const preview = state.buttons.get(
+        "Sichtbares Dokument in neuer Vorschau anzeigen"
+      )!;
+      const download = state.buttons.get("Sichtbares Dokument herunterladen")!;
+      const open = vi.fn();
+      vi.stubGlobal("window", { open });
+      file.canOpen = canOpen as boolean;
+      preview();
+      download();
+      expect(open).not.toHaveBeenCalled();
+      expect(state.download).not.toHaveBeenCalled();
+    }
+  );
 
   it("allows every task reader receipts but not general-document upload/delete", () => {
     state.data.files = [
@@ -434,6 +615,109 @@ describe("task document UI — synthetic mocks only", () => {
 });
 
 describe("local drafts and upload lifecycle", () => {
+  const hookController = (area: "prep" | "post") => {
+    let drafts!: TaskDocumentDraftController;
+    const Capture = () => {
+      drafts = useTaskDocumentDrafts(area);
+      return null;
+    };
+    renderToStaticMarkup(createElement(Capture));
+    // Browser file reading is purely synthetic; no storage or network is involved.
+    vi.stubGlobal(
+      "FileReader",
+      class {
+        result = "data:application/pdf;base64,c3ludGhldGlj";
+        onload: (() => void) | null = null;
+        readAsDataURL() {
+          this.onload?.();
+        }
+      }
+    );
+    return drafts;
+  };
+
+  it.each(["prep", "post"] as const)(
+    "invalidates counts and the existing list after confirmed uploads (%s)",
+    async area => {
+      const drafts = hookController(area);
+      drafts.stage({ kind: "document", title: "Erfolg", file: fixtureFile() });
+      state.upload.mockResolvedValueOnce({ id: 11 });
+      expect(await drafts.flush(41)).toBe(true);
+      expect(state.invalidate).toHaveBeenCalledWith({ area, taskId: 41 });
+      expect(state.invalidateCounts).toHaveBeenCalledWith({ area });
+      expect(state.upload).toHaveBeenCalledOnce();
+    }
+  );
+
+  it("invalidates counts after partial flush successes, without re-uploading confirmed files on retry", async () => {
+    const drafts = hookController("prep");
+    for (const title of ["Erfolg", "Fehler", "Weiterer Erfolg"])
+      drafts.stage({ kind: "document", title, file: fixtureFile() });
+    state.upload
+      .mockResolvedValueOnce({ id: 1 })
+      .mockRejectedValueOnce(new Error("Fiktiver Fehler"))
+      .mockResolvedValueOnce({ id: 3 });
+    expect(await drafts.flush(41)).toBe(false);
+    expect(state.invalidate).toHaveBeenCalledWith({ area: "prep", taskId: 41 });
+    expect(state.invalidateCounts).toHaveBeenCalledOnce();
+    expect(state.invalidateCounts).toHaveBeenCalledWith({ area: "prep" });
+    state.upload.mockResolvedValueOnce({ id: 2 });
+    expect(await drafts.flush(41)).toBe(true);
+    expect(state.upload.mock.calls.map(([input]) => input.title)).toEqual([
+      "Erfolg",
+      "Fehler",
+      "Weiterer Erfolg",
+      "Fehler",
+    ]);
+    expect(state.invalidateCounts).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not count local drafts or entirely failed uploads", async () => {
+    const drafts = hookController("post");
+    drafts.stage({ kind: "document", title: "Lokal", file: fixtureFile() });
+    expect(state.invalidateCounts).not.toHaveBeenCalled();
+    state.upload.mockRejectedValueOnce(new Error("Fiktiver Fehler"));
+    expect(await drafts.flush(41)).toBe(false);
+    expect(state.invalidateCounts).not.toHaveBeenCalled();
+    expect(state.invalidate).toHaveBeenCalledWith({ area: "post", taskId: 41 });
+  });
+
+  it("does not turn cache refresh failures into upload failures or duplicates", async () => {
+    const drafts = hookController("prep");
+    drafts.stage({
+      kind: "document",
+      title: "Gespeichert",
+      file: fixtureFile(),
+    });
+    state.upload.mockResolvedValueOnce({ id: 1 });
+    state.invalidate.mockRejectedValue(new Error("Fiktiver Cachefehler"));
+    state.invalidateCounts.mockRejectedValue(new Error("Fiktiver Cachefehler"));
+    expect(await drafts.flush(41)).toBe(true);
+    expect(await drafts.flush(41)).toBe(true);
+    expect(state.upload).toHaveBeenCalledOnce();
+    expect(state.invalidateCounts).toHaveBeenCalledOnce();
+  });
+
+  it.each(["prep", "post"] as const)(
+    "invalidates area counts only after successful deletion and preserves list refresh (%s)",
+    async area => {
+      renderDialog({ area });
+      state.remove.mockRejectedValueOnce(new Error("Fiktiver Löschfehler"));
+      await expect(state.removeMutation!({ area, id: 3 })).rejects.toThrow(
+        "Fiktiver Löschfehler"
+      );
+      expect(state.invalidateCounts).not.toHaveBeenCalled();
+      state.remove.mockResolvedValueOnce({ success: true });
+      await state.removeMutation!({ area, id: 3 });
+      expect(state.invalidateCounts).toHaveBeenCalledOnce();
+      expect(state.invalidateCounts).toHaveBeenCalledWith({ area });
+      const text = source("client/src/components/TaskDocumentsDialog.tsx");
+      expect(text).toMatch(
+        /await remove\.mutateAsync\(\{ area, id: row\.id \}\);\s*setDeleteId\(null\);\s*await list\.refetch\(\);/
+      );
+    }
+  );
+
   it("discards any number of new-task drafts without uploading/orphaning anything", () => {
     const queue = createTaskDocumentDraftQueue("prep");
     queue.stage({ kind: "document", title: "Erstes", file: fixtureFile() });

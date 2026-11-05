@@ -302,6 +302,12 @@ export default function PostProcessing() {
 
   const utils = trpc.useUtils();
   const { data: rawRows = [], isLoading } = trpc.post.list.useQuery();
+  const documentCountsInput = useMemo(() => ({ area: "post" as const }), []);
+  const { data: documentCounts } = trpc.taskDocuments.counts.useQuery(documentCountsInput);
+  const documentCountMap = useMemo(
+    () => new Map((documentCounts ?? []).map(row => [row.taskId, row.count])),
+    [documentCounts]
+  );
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
   const { data: locations = [] } = trpc.locations.list.useQuery();
@@ -1210,6 +1216,7 @@ export default function PostProcessing() {
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-1">
                           <TaskDocumentsButton compact taskTitle={task.task}
+                            count={documentCountMap.get(task.id)}
                             disabled={task.id <= 0 || pending}
                             onClick={() => { rowDocuments.clear(); setDocumentTask(task); }} />
                           <Button
@@ -1299,6 +1306,7 @@ export default function PostProcessing() {
                       </div>
                       <div className="flex shrink-0 gap-1">
                         <TaskDocumentsButton compact taskTitle={task.task}
+                          count={documentCountMap.get(task.id)}
                           disabled={task.id <= 0 || pending}
                           onClick={() => { rowDocuments.clear(); setDocumentTask(task); }} />
                         <Button

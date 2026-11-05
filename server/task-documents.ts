@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq, asc } from "drizzle-orm";
+import { and, eq, asc, count, isNotNull } from "drizzle-orm";
 import JSZip from "jszip";
 import * as CFB from "cfb";
 import jpeg from "jpeg-js";
@@ -215,6 +215,7 @@ export function canReadTaskReceipt(
   task: { contactId: number | null }
 ) {
   return (
+    actor.taskWrite ||
     actor.financeWrite ||
     (actor.personalAccount &&
       (file.uploadedByUserId === actor.userId ||
@@ -245,29 +246,54 @@ export async function listTaskDocuments(
     .where(and(scope(), eq(taskColumn(area), taskId)))
     .orderBy(asc(taskDocuments.id));
   return {
-    files: rows
-      .filter(
-        row => row.kind === "document" || canReadTaskReceipt(actor, row, task)
-      )
-      .map(row => ({
-        id: row.id,
-        kind: row.kind,
-        title: row.title,
-        paidBy: row.paidBy,
-        fileName: row.fileName,
-        mimeType: row.mimeType,
-        byteSize: row.byteSize,
-        createdAt: row.createdAt,
-        canDelete: canDelete(actor, row),
-      })),
+    // Bereichs-Leser sehen alle Einträge; Dateiinhalte bleiben separat geschützt.
+    files: rows.map(row => ({
+      id: row.id,
+      kind: row.kind,
+      title: row.title,
+      paidBy: row.paidBy,
+      fileName: row.fileName,
+      mimeType: row.mimeType,
+      byteSize: row.byteSize,
+      createdAt: row.createdAt,
+      canOpen: row.kind === "document" || canReadTaskReceipt(actor, row, task),
+      canDelete: canDelete(actor, row),
+    })),
     canUploadDocuments: actor.taskWrite,
     canUploadReceipts: true as const,
     pdfUploadPolicyVersion: PDF_UPLOAD_POLICY_VERSION,
     receiptIdentityNotice:
-      actor.personalAccount || actor.financeWrite
+      actor.personalAccount || actor.financeWrite || actor.taskWrite
         ? null
-        : "Dieser gemeinsame Teamzugang erlaubt keine persönliche Belegzuordnung. Hochgeladene Belege sehen die berechtigten Verantwortlichen und Finanz-Schreibenden.",
+        : "Dieser gemeinsame Teamzugang erlaubt keine persönliche Belegzuordnung. Hochgeladene Belege öffnen die berechtigten Verantwortlichen sowie Personen mit Aufgaben- oder Finanz-Schreibrecht.",
   };
+}
+/** Eine Bereichsabfrage statt einer Anfrage pro Karte; keine Beleginhalte/-Keys. */
+export async function listTaskDocumentCounts(area: TaskDocumentArea) {
+  const db = await requireEvent();
+  const table = area === "prep" ? prepTasks : postTasks;
+  const activeTasks = await db
+    .select({ taskId: table.id })
+    .from(table)
+    .where(
+      and(
+        eq(table.eventId, currentEventId()),
+        eq(table.year, currentEventYear()),
+        eq(table.deleted, false)
+      )
+    );
+  if (!activeTasks.length) return [];
+  const activeIds = new Set(activeTasks.map(task => task.taskId));
+  const column = taskColumn(area);
+  const counts = await db
+    .select({ taskId: column, count: count() })
+    .from(taskDocuments)
+    .where(and(scope(), isNotNull(column)))
+    .groupBy(column);
+  return counts
+    .filter(row => row.taskId !== null && activeIds.has(row.taskId))
+    .map(row => ({ taskId: row.taskId!, count: Number(row.count) }))
+    .sort((a, b) => a.taskId - b.taskId);
 }
 export async function listTaskDocumentPayers() {
   const db = await requireEvent();
@@ -442,8 +468,9 @@ async function accessibleFile(
   const task = await requireDocumentTask(area, taskId);
   if (file.kind === "receipt" && !canReadTaskReceipt(actor, file, task))
     throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "Datei wurde nicht gefunden.",
+      code: "FORBIDDEN",
+      message:
+        "Nur berechtigte Personen dürfen diesen Beleg / diese Rechnung anzeigen oder herunterladen.",
     });
   return file;
 }

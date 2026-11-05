@@ -344,6 +344,12 @@ export default function Preparation() {
 
   const utils = trpc.useUtils();
   const { data: rawRows = [], isLoading } = trpc.prep.list.useQuery();
+  const documentCountsInput = useMemo(() => ({ area: "prep" as const }), []);
+  const { data: documentCounts } = trpc.taskDocuments.counts.useQuery(documentCountsInput);
+  const documentCountMap = useMemo(
+    () => new Map((documentCounts ?? []).map(row => [row.taskId, row.count])),
+    [documentCounts]
+  );
   const { data: tenantProduct } = trpc.tenantProduct.current.useQuery(undefined, {
     staleTime: 60_000,
   });
@@ -1320,6 +1326,7 @@ export default function Preparation() {
                       <td className="px-4 py-3 align-top text-right">
                         <div className="flex items-center justify-center gap-1">
                           <TaskDocumentsButton compact taskTitle={task.task}
+                            count={documentCountMap.get(task.id)}
                             disabled={task.id <= 0 || pending}
                             onClick={() => { rowDocuments.clear(); setDocumentTask(task); }} />
                           <Button
@@ -1417,6 +1424,7 @@ export default function Preparation() {
                       </div>
                       <div className="flex shrink-0 gap-1">
                         <TaskDocumentsButton compact taskTitle={task.task}
+                          count={documentCountMap.get(task.id)}
                           disabled={task.id <= 0 || pending}
                           onClick={() => { rowDocuments.clear(); setDocumentTask(task); }} />
                         <Button

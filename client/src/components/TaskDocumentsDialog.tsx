@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
-import { Download, Eye, Paperclip, Trash2, Upload } from "lucide-react";
+import { Download, Eye, Lock, Paperclip, Trash2, Upload } from "lucide-react";
 import {
   useEffect,
   useMemo,
@@ -31,6 +31,7 @@ export type TaskDocumentFile = {
   mimeType: string;
   byteSize: number;
   createdAt: Date | string | number;
+  canOpen: boolean;
   canDelete: boolean;
 };
 export type TaskDocumentList = {
@@ -275,13 +276,20 @@ export function useTaskDocumentDrafts(area: TaskDocumentArea) {
     discard: queue.discard,
     clear: queue.clear,
     flush: async (taskId: number) => {
-      const success = await queue.flush(taskId, input =>
-        upload.mutateAsync(input)
-      );
+      let uploaded = false;
+      const success = await queue.flush(taskId, async input => {
+        await upload.mutateAsync(input);
+        uploaded = true;
+      });
       // A refresh failure must not turn a confirmed upload into a retry/duplicate.
       void utils.taskDocuments.list
         .invalidate({ area, taskId })
         .catch(() => undefined);
+      // Confirmed partial successes count too; failed/local drafts never count.
+      if (uploaded)
+        void utils.taskDocuments.counts
+          .invalidate({ area })
+          .catch(() => undefined);
       return success;
     },
   };
@@ -362,12 +370,18 @@ export function TaskDocumentsButton({
   disabled = false,
   taskTitle,
   compact = false,
+  count,
 }: {
   onClick: () => void;
   disabled?: boolean;
   taskTitle?: string;
   compact?: boolean;
+  count?: number;
 }) {
+  const hasCount = typeof count === "number" && count > 0;
+  const label = taskTitle
+    ? `Belege / Dokumente zu ${taskTitle}`
+    : "Belege / Dokumente";
   return (
     <Button
       type="button"
@@ -375,18 +389,24 @@ export function TaskDocumentsButton({
       size={compact ? "icon" : "default"}
       className={
         compact
-          ? "h-11 w-11 shrink-0 border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+          ? "relative h-11 w-11 shrink-0 border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
           : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
       }
       disabled={disabled}
       onClick={onClick}
       title="Belege / Dokumente"
-      aria-label={
-        taskTitle ? `Belege / Dokumente zu ${taskTitle}` : "Belege / Dokumente"
-      }
+      aria-label={`${label}${hasCount ? ` (${count} ${count === 1 ? "Datei" : "Dateien"})` : ""}`}
     >
       <Paperclip className={compact ? "h-4 w-4" : "mr-2 h-4 w-4"} />
       {!compact && "Belege / Dokumente"}
+      {compact && hasCount && (
+        <span
+          aria-hidden="true"
+          className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-700 px-1 text-[10px] font-bold text-white ring-2 ring-white"
+        >
+          {count}
+        </span>
+      )}
     </Button>
   );
 }
@@ -418,7 +438,13 @@ export function TaskDocumentsDialog({
     retry: false,
   });
   const utils = trpc.useUtils();
-  const remove = trpc.taskDocuments.remove.useMutation();
+  const remove = trpc.taskDocuments.remove.useMutation({
+    onSuccess: () => {
+      void utils.taskDocuments.counts
+        .invalidate({ area })
+        .catch(() => undefined);
+    },
+  });
   const [kind, setKind] = useState<TaskDocumentKind>("document");
   const [title, setTitle] = useState("");
   const [paidByKey, setPaidByKey] = useState("");
@@ -501,7 +527,7 @@ export function TaskDocumentsDialog({
     });
   };
   const openFile = (row: TaskDocumentFile, mode: "preview" | "download") => {
-    if (requestInFlight.current || drafts.busy) return;
+    if (row.canOpen !== true || requestInFlight.current || drafts.busy) return;
     // Reserve the tab within the user gesture, before awaiting the tRPC response.
     const preview =
       mode === "preview" ? window.open("about:blank", "_blank") : null;
@@ -603,31 +629,40 @@ export function TaskDocumentsDialog({
                 <p className="text-xs text-muted-foreground">
                   Hinzugefügt: {new Date(row.createdAt).toLocaleString("de-DE")}
                 </p>
+                {row.canOpen !== true && (
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Lock aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                    Nur für berechtigte Personen
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-2">
-                  {taskDocumentCanPreview(row.mimeType) && (
+                  {row.canOpen === true &&
+                    taskDocumentCanPreview(row.mimeType) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => openFile(row, "preview")}
+                        aria-label={`${row.title} in neuer Vorschau anzeigen`}
+                      >
+                        <Eye className="mr-1.5 h-4 w-4" />
+                        Anzeigen
+                      </Button>
+                    )}
+                  {row.canOpen === true && (
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       disabled={busy}
-                      onClick={() => openFile(row, "preview")}
-                      aria-label={`${row.title} in neuer Vorschau anzeigen`}
+                      onClick={() => openFile(row, "download")}
+                      aria-label={`${row.title} herunterladen`}
                     >
-                      <Eye className="mr-1.5 h-4 w-4" />
-                      Anzeigen
+                      <Download className="mr-1.5 h-4 w-4" />
+                      Herunterladen
                     </Button>
                   )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => openFile(row, "download")}
-                    aria-label={`${row.title} herunterladen`}
-                  >
-                    <Download className="mr-1.5 h-4 w-4" />
-                    Herunterladen
-                  </Button>
                   {row.canDelete &&
                     (row.kind === "receipt" || canUploadDocuments) && (
                       <Button

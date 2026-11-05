@@ -37,6 +37,7 @@ import {
   canReadTaskReceipt,
   downloadTaskDocument,
   listTaskDocuments,
+  listTaskDocumentCounts,
   uploadTaskDocument,
   validateTaskFile,
   type TaskDocumentActor,
@@ -155,8 +156,12 @@ function fakeDatabase(state: State) {
     ) {
       throw new Error(`Unsupported fake predicate: ${query.sql}`);
     }
-    return equalities.every(
-      (match, index) => row[match[1]] === query.params[index]
+    const nonNull = Array.from(
+      query.sql.matchAll(/`[^`]+`\.`([^`]+)`\s+is not null/gi)
+    );
+    return (
+      nonNull.every(match => row[match[1]] != null) &&
+      equalities.every((match, index) => row[match[1]] === query.params[index])
     );
   }
   const fake: any = {
@@ -165,6 +170,7 @@ function fakeDatabase(state: State) {
       let condition: QueryLog | undefined;
       let maximum = Infinity;
       let ordered = false;
+      let groupedBy: string | undefined;
       const chain: any = {
         from(value: any) {
           table = getTableName(value);
@@ -184,6 +190,10 @@ function fakeDatabase(state: State) {
           ordered = true;
           return chain;
         },
+        groupBy(column: { name: string }) {
+          groupedBy = column.name;
+          return chain;
+        },
         for(mode: string) {
           locks.push({ table, mode });
           return chain;
@@ -196,6 +206,18 @@ function fakeDatabase(state: State) {
               );
               if (ordered) rows = [...rows].sort((a, b) => a.id - b.id);
               rows = rows.slice(0, maximum);
+              if (groupedBy) {
+                const groups = new Map<number, number>();
+                for (const row of rows)
+                  groups.set(
+                    row[groupedBy],
+                    (groups.get(row[groupedBy]) ?? 0) + 1
+                  );
+                return Array.from(groups, ([taskId, count]) => ({
+                  taskId,
+                  count,
+                }));
+              }
               return fields
                 ? rows.map(row =>
                     Object.fromEntries(
@@ -615,7 +637,12 @@ const accessCases: AccessCase[] = [
   {
     label: "Aufgaben schreiben allein",
     actor: actor({ taskWrite: true }),
-    allowed: false,
+    allowed: true,
+  },
+  {
+    label: "Aufgaben schreiben mit gemeinsamem Zugang",
+    actor: actor({ taskWrite: true, personalAccount: false }),
+    allowed: true,
   },
   {
     label: "nur beaufsichtigter zahlender Helfer",
@@ -662,7 +689,7 @@ describe("canReadTaskReceipt — Identitäts-/Rechtematrix, niemals Namens-/Betr
   });
 });
 
-describe("list/download — dieselbe Belegmatrix und keine versteckten Metadaten", () => {
+describe("list/download — sichtbare Metadaten, separate Berechtigung für Beleginhalte", () => {
   it.each(accessCases)(
     "$label: Liste und Download stimmen überein",
     async entry => {
@@ -680,10 +707,15 @@ describe("list/download — dieselbe Belegmatrix und keine versteckten Metadaten
       const listed = await inScope(() =>
         listTaskDocuments("prep", TASK_ID, entry.actor)
       );
-      expect(listed.files.map(file => file.id)).toEqual(
-        entry.allowed ? [42, 43] : [43]
-      );
-      expect(listed.files).toHaveLength(entry.allowed ? 2 : 1);
+      expect(listed.files.map(file => file.id)).toEqual([42, 43]);
+      expect(listed.files).toHaveLength(2);
+      expect(listed.files[0]).toMatchObject({
+        title: privateFile.title,
+        fileName: privateFile.fileName,
+        paidBy: privateFile.paidBy,
+        canOpen: entry.allowed,
+      });
+      expect(listed.files[1].canOpen).toBe(true);
       expect(listed.canUploadDocuments).toBe(entry.actor.taskWrite);
       expect(listed.canUploadReceipts).toBe(true);
       expect(listed).not.toHaveProperty("totalCount");
@@ -699,25 +731,21 @@ describe("list/download — dieselbe Belegmatrix und keine versteckten Metadaten
             "mimeType",
             "byteSize",
             "createdAt",
+            "canOpen",
             "canDelete",
           ].sort()
         );
       }
+      // Metadaten sind freigegeben; private Speicheradressen und Bytes niemals.
+      expect(JSON.stringify(listed)).not.toContain(PRIVATE_KEY);
+      expect(JSON.stringify(listed)).not.toContain("private fixture contents");
       if (!entry.allowed) {
-        const serialized = JSON.stringify(listed);
-        for (const secret of [
-          privateFile.title,
-          privateFile.fileName,
-          privateFile.paidBy!,
-          PRIVATE_KEY,
-        ]) {
-          expect(serialized).not.toContain(secret);
-        }
         await expect(
           inScope(() => downloadTaskDocument("prep", 42, entry.actor))
         ).rejects.toMatchObject({
-          code: "NOT_FOUND",
-          message: "Datei wurde nicht gefunden.",
+          code: "FORBIDDEN",
+          message:
+            "Nur berechtigte Personen dürfen diesen Beleg / diese Rechnung anzeigen oder herunterladen.",
         });
         expect(storageRead).not.toHaveBeenCalled();
       } else {
@@ -738,19 +766,19 @@ describe("list/download — dieselbe Belegmatrix und keine versteckten Metadaten
       expect(memory.mutations).toEqual([]);
     }
   );
-  it("liefert bei ausschließlich versteckten Belegen keine Dateien/Belegzahlen und keine Bytes", async () => {
+  it("liefert ausschließlich gesperrte Belege als Einträge ohne Öffnungsrecht und ohne Bytes", async () => {
     const listed = await inScope(() =>
       listTaskDocuments("prep", TASK_ID, actor())
     );
     expect(listed).toMatchObject({
-      files: [],
+      files: [{ id: 42, kind: "receipt", canOpen: false, canDelete: false }],
       canUploadDocuments: false,
       canUploadReceipts: true,
     });
     memory.state.task_documents = [];
     expect(
-      await inScope(() => listTaskDocuments("prep", TASK_ID, actor()))
-    ).toEqual(listed);
+      (await inScope(() => listTaskDocuments("prep", TASK_ID, actor()))).files
+    ).toEqual([]);
     expect(storageRead).not.toHaveBeenCalled();
   });
   it.each(["prep", "post"] as const)(
@@ -769,6 +797,7 @@ describe("list/download — dieselbe Belegmatrix und keine versteckten Metadaten
       ).toMatchObject({
         id: 42,
         kind: "document",
+        canOpen: true,
         canDelete: false,
       });
       await inScope(() => downloadTaskDocument(area, 42, actor()));
@@ -778,10 +807,87 @@ describe("list/download — dieselbe Belegmatrix und keine versteckten Metadaten
       vi.mocked(storageRead).mockClear();
       expect(
         (await inScope(() => listTaskDocuments(area, taskId, actor()))).files
-      ).toEqual([]);
+      ).toMatchObject([{ id: 42, kind: "receipt", canOpen: false }]);
       await expect(
         inScope(() => downloadTaskDocument(area, 42, actor()))
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      expect(storageRead).not.toHaveBeenCalled();
+    }
+  );
+});
+
+describe("Anhangszähler — alle persistierten Anhänge, aktive Aufgaben und korrekter Scope", () => {
+  it.each(["prep", "post"] as const)(
+    "%s zählt auch gesperrte Belege ohne Dateizugriff",
+    async area => {
+      const taskId = area === "prep" ? TASK_ID : POST_TASK_ID;
+      const column = area === "prep" ? "prepTaskId" : "postTaskId";
+      const table = area === "prep" ? "prep_tasks" : "post_tasks";
+      const attached = (id: number, overrides: Partial<DocumentRow> = {}) =>
+        document({
+          id,
+          prepTaskId: null,
+          postTaskId: null,
+          [column]: taskId,
+          ...overrides,
+        });
+      memory.state[table] = [
+        task(taskId),
+        task(80),
+        task(81, { deleted: true }),
+        task(82, { year: 2028 }),
+      ];
+      memory.state.task_documents = [
+        attached(1),
+        attached(2, { kind: "document" }),
+        attached(3, { [column]: 80 }),
+        attached(4, { [column]: 81 }),
+        attached(5, { [column]: 82 }),
+        attached(6, { [column]: 999 }),
+        attached(7, { tenantId: "anderer-verein" }),
+        attached(8, { eventId: 82 }),
+        attached(9, { year: 2028 }),
+        attached(10, {
+          prepTaskId: area === "post" ? TASK_ID : null,
+          postTaskId: area === "prep" ? POST_TASK_ID : null,
+        }),
+      ];
+      expect(await inScope(() => listTaskDocumentCounts(area))).toEqual([
+        { taskId, count: 2 },
+        { taskId: 80, count: 1 },
+      ]);
+      expect(memory.queries).toHaveLength(3);
+      expect(memory.queries[2]).toMatchObject({
+        table: "task_documents",
+        params: [scope.tenantId, scope.eventId, scope.year],
+      });
+      expect(memory.queries[2].sql).toContain(`\`${column}\` is not null`);
+      expect(storageRead).not.toHaveBeenCalled();
+      expect(storagePut).not.toHaveBeenCalled();
+      expect(memory.mutations).toEqual([]);
+    }
+  );
+  it.each(["prep", "post"] as const)(
+    "%s ohne aktive Aufgaben liefert keine Zähler",
+    async area => {
+      memory.state[area === "prep" ? "prep_tasks" : "post_tasks"] = [];
+      expect(await inScope(() => listTaskDocumentCounts(area))).toEqual([]);
+      expect(
+        memory.queries.some(query => query.table === "task_documents")
+      ).toBe(false);
+      expect(storageRead).not.toHaveBeenCalled();
+    }
+  );
+  it.each([{ tenantId: "anderer-verein" }, { id: 82 }, { year: 2028 }])(
+    "fremdes Event-Gate verweigert Zähler: %j",
+    async overrides => {
+      Object.assign(memory.state.events[0], overrides);
+      await expect(
+        inScope(() => listTaskDocumentCounts("prep"))
       ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      expect(memory.queries.every(query => query.table === "events")).toBe(
+        true
+      );
       expect(storageRead).not.toHaveBeenCalled();
     }
   );
@@ -1057,7 +1163,9 @@ describe("Upload — vertrauenswürdiger Actor, private Ablage und genau eine Da
           uploader
         )
       );
-      expect(listed.files.some(file => file.id === 1000)).toBe(personalAccount);
+      expect(listed.files.find(file => file.id === 1000)?.canOpen).toBe(
+        personalAccount
+      );
       expect(JSON.stringify(listed)).not.toContain("task-documents/");
       expect(JSON.stringify(listed)).not.toContain("storage.invalid");
     }
@@ -1081,10 +1189,10 @@ describe("Upload — vertrauenswürdiger Actor, private Ablage und genau eine Da
     expect(
       (await inScope(() => listTaskDocuments("prep", TASK_ID, supervisor)))
         .files
-    ).toEqual([]);
+    ).toMatchObject([{ canOpen: false }, { id: 1000, canOpen: false }]);
     await expect(
       inScope(() => downloadTaskDocument("prep", 1000, supervisor))
-    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(storageRead).not.toHaveBeenCalled();
   });
   it("weist Dokumentupload ohne taskWrite zurück, bevor Bytes gespeichert werden", async () => {

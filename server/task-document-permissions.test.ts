@@ -5,6 +5,7 @@ vi.mock("./task-documents", () => ({
     canUploadDocuments: false,
     canUploadReceipts: true,
   })),
+  listTaskDocumentCounts: vi.fn(async () => [{ taskId: 3, count: 2 }]),
   listTaskDocumentPayers: vi.fn(async () => [
     { key: "contact:17", name: "Musterperson" },
   ]),
@@ -111,6 +112,34 @@ describe("Aufgabendokumente: autorisierte Serverrouten", () => {
       expect.objectContaining({ taskWrite: false, financeWrite: false })
     );
   });
+  it.each(["prep", "post"] as const)(
+    "%s-Leser erhalten alle Anhangszähler ohne Finanzrechte",
+    async area => {
+      await expect(caller().taskDocuments.counts({ area })).resolves.toEqual([
+        { taskId: 3, count: 2 },
+      ]);
+      expect(files.listTaskDocumentCounts).toHaveBeenCalledWith(area);
+    }
+  );
+  it("Schreibrechte werden ausschließlich für den jeweils angefragten Aufgabenbereich aufgelöst", async () => {
+    access.moduleAccess = {
+      preparation: "write",
+      postprocessing: "read",
+      finances: "off",
+    };
+    await caller().taskDocuments.list({ area: "prep", taskId: 3 });
+    expect(files.listTaskDocuments).toHaveBeenLastCalledWith(
+      "prep",
+      3,
+      expect.objectContaining({ taskWrite: true, financeWrite: false })
+    );
+    await caller().taskDocuments.list({ area: "post", taskId: 4 });
+    expect(files.listTaskDocuments).toHaveBeenLastCalledWith(
+      "post",
+      4,
+      expect.objectContaining({ taskWrite: false, financeWrite: false })
+    );
+  });
   it("Finanz-Lesezugriff ist kein Finanz-Schreibrecht, auch beim Direktdownload", async () => {
     access.moduleAccess = {
       preparation: "write",
@@ -144,6 +173,8 @@ describe("Aufgabendokumente: autorisierte Serverrouten", () => {
     const api = caller().taskDocuments;
     for (const call of [
       () => api.list({ area: "prep", taskId: 3 }),
+      () => api.counts({ area: "prep" }),
+      () => api.counts({ area: "post" }),
       () => api.payers({ area: "post" }),
       () => api.upload(upload),
       () => api.download({ area: "prep", id: 10 }),
@@ -151,6 +182,7 @@ describe("Aufgabendokumente: autorisierte Serverrouten", () => {
     ])
       await expect(call()).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(files.listTaskDocuments).not.toHaveBeenCalled();
+    expect(files.listTaskDocumentCounts).not.toHaveBeenCalled();
     expect(files.uploadTaskDocument).not.toHaveBeenCalled();
     expect(files.downloadTaskDocument).not.toHaveBeenCalled();
   });
@@ -161,6 +193,12 @@ describe("Aufgabendokumente: autorisierte Serverrouten", () => {
         id: 10,
       })
     ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(
+      caller("planning-team-access-71", false).taskDocuments.counts({
+        area: "prep",
+      })
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(files.listTaskDocumentCounts).not.toHaveBeenCalled();
     expect(files.downloadTaskDocument).not.toHaveBeenCalled();
   });
   it("Unverknüpfte gemeinsame Logins erhalten keine private Uploaderidentität und keine Kontaktrechte", async () => {
@@ -188,6 +226,10 @@ describe("Aufgabendokumente: autorisierte Serverrouten", () => {
     await expect(
       caller().taskDocuments.list({ area: "prep", taskId: 3 })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      caller().taskDocuments.counts({ area: "post" })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(files.listTaskDocumentCounts).not.toHaveBeenCalled();
     expect(files.listTaskDocuments).not.toHaveBeenCalled();
   });
   it("Validiert nur die reduzierte Belegstruktur und nimmt keine Finanzbeträge auf", async () => {
