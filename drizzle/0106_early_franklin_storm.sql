@@ -1,0 +1,2 @@
+ALTER TABLE `task_documents` ADD `paidByUserId` int;--> statement-breakpoint
+ALTER TABLE `task_documents` ADD CONSTRAINT `task_documents_paidByUserId_users_id_fk` FOREIGN KEY (`paidByUserId`) REFERENCES `users`(`id`) ON DELETE set null ON UPDATE no action;

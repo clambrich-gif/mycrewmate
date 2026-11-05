@@ -1674,6 +1674,38 @@ export const postTasks = mysqlTable(
 );
 export type PostTask = typeof postTasks.$inferSelect;
 
+/** Private Anhänge: genau eine Vor- ODER Nachbereitungsaufgabe. Keine Finanzbuchung. */
+export const taskDocuments = mysqlTable(
+  "task_documents",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    tenantId: varchar("tenantId", { length: 96 }).notNull(),
+    eventId: int("eventId").notNull(),
+    year: int("year").notNull(),
+    prepTaskId: int("prepTaskId"),
+    postTaskId: int("postTaskId"),
+    kind: mysqlEnum("kind", ["document", "receipt"]).notNull(),
+    title: varchar("title", { length: 160 }).notNull(),
+    uploadedByUserId: int("uploadedByUserId").references(() => users.id, { onDelete: "set null" }),
+    paidByUserId: int("paidByUserId").references(() => users.id, { onDelete: "set null" }),
+    paidByContactId: int("paidByContactId").references(() => contacts.id, { onDelete: "set null" }),
+    paidByHelperId: int("paidByHelperId").references(() => helpers.id, { onDelete: "set null" }),
+    paidBy: varchar("paidBy", { length: 200 }),
+    fileName: varchar("fileName", { length: 200 }).notNull(),
+    mimeType: varchar("mimeType", { length: 100 }).notNull(),
+    byteSize: int("byteSize").notNull(),
+    storageKey: varchar("storageKey", { length: 500 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({ name: "task_documents_prep_scope_fk", columns: [table.prepTaskId, table.eventId, table.year], foreignColumns: [prepTasks.id, prepTasks.eventId, prepTasks.year] }).onDelete("cascade"),
+    foreignKey({ name: "task_documents_post_scope_fk", columns: [table.postTaskId, table.eventId, table.year], foreignColumns: [postTasks.id, postTasks.eventId, postTasks.year] }).onDelete("cascade"),
+    foreignKey({ name: "task_documents_event_scope_fk", columns: [table.eventId, table.year], foreignColumns: [events.id, events.year] }).onDelete("cascade"),
+    index("task_documents_prep_idx").on(table.tenantId, table.eventId, table.year, table.prepTaskId),
+    index("task_documents_post_idx").on(table.tenantId, table.eventId, table.year, table.postTaskId),
+  ]
+);
+
 /** Siehe prepTaskHelpers: maximal fünf getrennte Unterstützer je Aufgabe. */
 export const postTaskHelpers = mysqlTable(
   "post_task_helpers",

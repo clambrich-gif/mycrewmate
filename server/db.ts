@@ -35,6 +35,7 @@ import {
   eventYears,
   finances,
   financeReceipts,
+  taskDocuments,
   gpxTracks,
   helpers,
   InsertUser,
@@ -5479,7 +5480,8 @@ export async function deleteEvent(id: number) {
   const db = (await getDb()) as DB;
   const selectedYear = year();
   const selectedTenant = tenant();
-  return db.transaction(async tx => {
+  const documentKeys: string[] = [];
+  const deleted = await db.transaction(async tx => {
     const yearEvents = await tx
       .select()
       .from(events)
@@ -5498,6 +5500,8 @@ export async function deleteEvent(id: number) {
 
     const scope = <T extends { eventId: any }>(table: T) =>
       eq(table.eventId, id);
+    const documentRows = await tx.select({ key: taskDocuments.storageKey }).from(taskDocuments).where(and(scope(taskDocuments), eq(taskDocuments.tenantId, selectedTenant), eq(taskDocuments.year, selectedYear)));
+    documentKeys.push(...documentRows.map(row => row.key));
     await tx
       .delete(assignments)
       .where(
@@ -5537,6 +5541,8 @@ export async function deleteEvent(id: number) {
       nextEventId: nextEvent.id,
     };
   });
+  await Promise.allSettled(documentKeys.map(key => storageDelete(key)));
+  return deleted;
 }
 
 /** Drei Jahre nach Abschluss werden Events ohne dokumentierte Ausnahme vollständig entfernt. */
@@ -5564,7 +5570,7 @@ export async function cleanupExpiredClosedEvents(now = new Date()) {
   let eventsDeleted = 0;
   let filesDeleted = 0;
   for (const candidate of candidates) {
-    const [locationAssets, gpxAssets] = await Promise.all([
+    const [locationAssets, gpxAssets, documentAssets] = await Promise.all([
       database
         .select({ key: locations.logoKey })
         .from(locations)
@@ -5573,11 +5579,13 @@ export async function cleanupExpiredClosedEvents(now = new Date()) {
         .select({ key: gpxTracks.fileKey })
         .from(gpxTracks)
         .where(eq(gpxTracks.eventId, candidate.id)),
+      database.select({ key: taskDocuments.storageKey }).from(taskDocuments).where(eq(taskDocuments.eventId, candidate.id)),
     ]);
     const fileKeys = [
       candidate.pdfLogoKey,
       ...locationAssets.map(asset => asset.key),
       ...gpxAssets.map(asset => asset.key),
+      ...documentAssets.map(asset => asset.key),
     ].filter((key): key is string => Boolean(key));
 
     await database.transaction(async tx => {
@@ -9781,7 +9789,11 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
   const selectedEventId = event();
 
   if (area === "all") {
+    const documentKeys: string[] = [];
     await db.transaction(async tx => {
+      const documentRows = await tx.select({ key: taskDocuments.storageKey }).from(taskDocuments).where(and(planningScopeFor(taskDocuments, selectedYear, selectedEventId), eq(taskDocuments.tenantId, tenant())));
+      documentKeys.push(...documentRows.map(row => row.key));
+      await tx.delete(taskDocuments).where(and(planningScopeFor(taskDocuments, selectedYear, selectedEventId), eq(taskDocuments.tenantId, tenant())));
       const helperRows = await tx
         .select()
         .from(helpers)
@@ -9867,6 +9879,7 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
         .where(planningScopeFor(finances, selectedYear, selectedEventId));
       await tx.delete(financeReceipts).where(planningScopeFor(financeReceipts, selectedYear, selectedEventId));
     });
+    await Promise.allSettled(documentKeys.map(key => storageDelete(key)));
     return;
   }
 
@@ -10152,7 +10165,13 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
     finances,
   } as const;
   const table = tableByArea[area];
+  const documentKeys: string[] = [];
   await db.transaction(async tx => {
+    if (area === "prep" || area === "post") {
+      const documentColumn = area === "prep" ? taskDocuments.prepTaskId : taskDocuments.postTaskId;
+      const documentRows = await tx.select({ key: taskDocuments.storageKey }).from(taskDocuments).where(and(planningScopeFor(taskDocuments, selectedYear, selectedEventId), eq(taskDocuments.tenantId, tenant()), isNotNull(documentColumn)));
+      documentKeys.push(...documentRows.map(row => row.key));
+    }
     if (area === "finances") {
       await tx.delete(financeReceipts).where(planningScopeFor(financeReceipts, selectedYear, selectedEventId));
     }
@@ -10175,6 +10194,7 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
       );
     requireDeletedRows(result, rows.length);
   });
+  await Promise.allSettled(documentKeys.map(key => storageDelete(key)));
 }
 
 const shiftKey = (shift: {

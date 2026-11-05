@@ -22,6 +22,7 @@ import {
   prepTaskHelpers,
   shiftAreaContacts,
   shifts,
+  taskDocuments,
   users,
 } from "../drizzle/schema";
 import {
@@ -42,7 +43,12 @@ import {
   type ActiveExcelImportArea,
 } from "../shared/excel-import-areas";
 import { overlaps, toMinutes } from "./logic";
-import { currentEventId, currentEventYear } from "./year-context";
+import {
+  currentEventId,
+  currentEventYear,
+  currentTenantId,
+  type PlanningScope,
+} from "./year-context";
 import {
   getCurrentTenantProductEntitlement,
   getDb,
@@ -3814,6 +3820,112 @@ export async function restoreBackup(
   );
 }
 
+/** Nur aktive Original-IDs des jeweiligen Bereichs dürfen einen Anhang erben. */
+export function stableTaskDocumentRestoreIds(
+  existingIds: ReadonlySet<number>,
+  restoredRows: ReadonlyArray<{ sourceId: number | null; actualId: number }>
+): Map<number, number> {
+  const restoredIds = new Map<number, number>();
+  const ambiguousIds = new Set<number>();
+  for (const { sourceId, actualId } of restoredRows) {
+    if (
+      sourceId === null ||
+      !existingIds.has(sourceId) ||
+      !Number.isSafeInteger(sourceId) ||
+      sourceId <= 0 ||
+      !Number.isSafeInteger(actualId) ||
+      actualId <= 0
+    ) continue;
+    if (restoredIds.has(sourceId)) ambiguousIds.add(sourceId);
+    else restoredIds.set(sourceId, actualId);
+  }
+  // Mehrdeutige technische Zielangaben werden nie durch Last-write-wins geerbt.
+  for (const id of Array.from(ambiguousIds)) restoredIds.delete(id);
+  return restoredIds;
+}
+
+type TaskDocumentRestoreRow = typeof taskDocuments.$inferSelect;
+export type TaskDocumentRestoreMaps = {
+  prep: ReadonlyMap<number, number>;
+  post: ReadonlyMap<number, number>;
+  contacts: ReadonlyMap<number, number>;
+  helpers: ReadonlyMap<number, number>;
+};
+
+function taskDocumentRestoreScope(scope: PlanningScope) {
+  return and(
+    eq(taskDocuments.tenantId, scope.tenantId),
+    eq(taskDocuments.eventId, scope.eventId),
+    eq(taskDocuments.year, scope.year)
+  );
+}
+
+/** Der Aufrufer muss diesen Client innerhalb seiner Restore-Transaktion halten. */
+export async function detachTaskDocumentsForRestore(
+  tx: Pick<Client, "select" | "update">,
+  scope: PlanningScope
+): Promise<TaskDocumentRestoreRow[]> {
+  const rows = await tx.select().from(taskDocuments)
+    .where(taskDocumentRestoreScope(scope)).for("update");
+  if (rows.length) {
+    await tx.update(taskDocuments).set({
+      prepTaskId: null,
+      postTaskId: null,
+      paidByContactId: null,
+      paidByHelperId: null,
+    }).where(taskDocumentRestoreScope(scope));
+  }
+  return rows;
+}
+
+/** Keine Aufgaben-/Personennamen und keine ungeprüften Import-IDs auflösen. */
+export function taskDocumentRestoreReferences(
+  row: Pick<TaskDocumentRestoreRow,
+    "prepTaskId" | "postTaskId" | "paidByContactId" | "paidByHelperId">,
+  maps: TaskDocumentRestoreMaps
+) {
+  const prepTaskId = row.prepTaskId !== null && row.postTaskId === null
+    ? maps.prep.get(row.prepTaskId) ?? null : null;
+  const postTaskId = row.postTaskId !== null && row.prepTaskId === null
+    ? maps.post.get(row.postTaskId) ?? null : null;
+  const attached = prepTaskId !== null || postTaskId !== null;
+  return {
+    prepTaskId,
+    postTaskId,
+    paidByContactId: attached && row.paidByContactId !== null
+      ? maps.contacts.get(row.paidByContactId) ?? null : null,
+    paidByHelperId: attached && row.paidByHelperId !== null
+      ? maps.helpers.get(row.paidByHelperId) ?? null : null,
+  };
+}
+
+export async function reattachTaskDocumentsAfterRestore(
+  tx: Pick<Client, "update">,
+  scope: PlanningScope,
+  rows: ReadonlyArray<TaskDocumentRestoreRow>,
+  maps: TaskDocumentRestoreMaps,
+  activeTaskIds?: { prep: ReadonlySet<number>; post: ReadonlySet<number> }
+) {
+  for (const row of rows) {
+    if (row.tenantId !== scope.tenantId || row.eventId !== scope.eventId ||
+      row.year !== scope.year) continue;
+    const references = taskDocumentRestoreReferences(row, maps);
+    if (references.prepTaskId === null && references.postTaskId === null) {
+      const wasActive = row.prepTaskId !== null
+        ? !activeTaskIds || activeTaskIds.prep.has(row.prepTaskId)
+        : row.postTaskId !== null && (!activeTaskIds || activeTaskIds.post.has(row.postTaskId));
+      if (wasActive) throw new Error("Der Import würde vorhandene Belege oder Dokumente von ihren Aufgaben trennen. Verwenden Sie einen passenden Speicherstand oder entfernen Sie die betroffenen Anhänge zuvor bewusst. Es wurden keine Änderungen übernommen.");
+      continue;
+    }
+    await tx.update(taskDocuments).set(references).where(and(
+      taskDocumentRestoreScope(scope), eq(taskDocuments.id, row.id)
+    ));
+  }
+  // Bereits soft-gelöschte Aufgaben bleiben ohne erreichbaren Anhang. Aktive
+  // Dateizuordnungen dürfen niemals unbemerkt verloren gehen: atomarer Rollback.
+  // uploadedByUserId, paidByUserId und die übrigen Metadaten werden nie verändert.
+}
+
 export async function restoreProjectDocument(
   imported: BackupDocument,
   sourceDigest: string,
@@ -3826,6 +3938,7 @@ export async function restoreProjectDocument(
   const db = (await getDb()) as Client;
   const year = currentEventYear();
   const eventId = currentEventId();
+  const documentScope = { tenantId: currentTenantId(), eventId, year };
   const scope = (table: any) =>
     and(eq(table.year, year), eq(table.eventId, eventId));
   return db.transaction(async tx => {
@@ -3973,6 +4086,10 @@ export async function restoreProjectDocument(
         );
       await tx.delete(shiftAreaContacts).where(scope(shiftAreaContacts));
       await tx.delete(shifts).where(scope(shifts));
+      // Auch reine Material-/Finanzimporte ersetzen beide Aufgabenbereiche.
+      // Vor dem ersten Task-/Personen-Delete Originalbezüge sichern und die
+      // CASCADE-/SET-NULL-FKs innerhalb derselben Transaktion temporär lösen.
+      const detachedTaskDocuments = await detachTaskDocumentsForRestore(tx, documentScope);
       await tx.delete(prepTasks).where(scope(prepTasks));
       await tx.delete(locations).where(scope(locations));
       await tx.delete(postTasks).where(scope(postTasks));
@@ -4045,6 +4162,7 @@ export async function restoreProjectDocument(
       const contactIdBySource = new Map<number, number>();
       const contactIdByName = new Map<string, number>();
       const contactIdByPreviousId = new Map<number, number>();
+      const restoredDocumentContacts: Array<{ sourceId: number | null; actualId: number }> = [];
       for (let index = 0; index < desired.contacts.length; index++) {
         const row = desired.contacts[index];
         const preservedId =
@@ -4061,6 +4179,7 @@ export async function restoreProjectDocument(
         });
         const actualId =
           preservedId ?? Number(result?.[0]?.insertId ?? result?.insertId);
+        restoredDocumentContacts.push({ sourceId: row.sourceId, actualId });
         if (row.sourceId) contactIdBySource.set(row.sourceId, actualId);
         contactIdByName.set(personKey(row.name), actualId);
         if (preservedId) contactIdByPreviousId.set(preservedId, actualId);
@@ -4083,6 +4202,7 @@ export async function restoreProjectDocument(
       const currentHelperIds = new Set(snapshot.helpers.map(row => row.id));
       const helperIdBySource = new Map<number, number>();
       const helperIdByName = new Map<string, number>();
+      const restoredDocumentHelpers: Array<{ sourceId: number | null; actualId: number }> = [];
       for (const row of desired.helpers) {
         const preservedId =
           row.sourceId && currentHelperIds.has(row.sourceId)
@@ -4125,6 +4245,7 @@ export async function restoreProjectDocument(
         });
         const actualId =
           preservedId ?? Number(result?.[0]?.insertId ?? result?.insertId);
+        restoredDocumentHelpers.push({ sourceId: row.sourceId, actualId });
         if (row.sourceId) helperIdBySource.set(row.sourceId, actualId);
         helperIdByName.set(personKey(row.name), actualId);
       }
@@ -4221,14 +4342,14 @@ export async function restoreProjectDocument(
 
       const preserveId = (sourceId: number | null, currentIds: Set<number>) =>
         sourceId && currentIds.has(sourceId) ? { id: sourceId } : {};
-      await insertRows(
-        tx,
-        prepTasks,
-        desired.prep.map(row => ({
-          ...preserveId(
-            row.sourceId,
-            new Set(snapshot.prep.map(item => item.id))
-          ),
+      const existingPrepTaskIds = new Set<number>(snapshot.prep.map(row => row.id));
+      const existingPostTaskIds = new Set<number>(snapshot.post.map(row => row.id));
+      const restoredDocumentPrep: Array<{ sourceId: number | null; actualId: number }> = [];
+      const restoredDocumentPost: Array<{ sourceId: number | null; actualId: number }> = [];
+      for (const row of desired.prep) {
+        const preservedId = preserveId(row.sourceId, existingPrepTaskIds).id;
+        const result: any = await tx.insert(prepTasks).values({
+          ...(preservedId ? { id: preservedId } : {}),
           year,
           eventId,
           category: row.category ?? "",
@@ -4241,18 +4362,17 @@ export async function restoreProjectDocument(
           statusWording: row.statusWording ?? "aufgabe",
           note: row.note || null,
           sortOrder: row.sortOrder,
-        }))
-      );
-      const restoredPrepTasks = await tx
-        .select({ id: prepTasks.id, task: prepTasks.task })
-        .from(prepTasks)
-        .where(and(scope(prepTasks), eq(prepTasks.deleted, false)));
-      const prepTaskIdByName = new Map(restoredPrepTasks.map(row => [row.task, row.id]));
+        });
+        const actualId = preservedId ?? Number(result?.[0]?.insertId ?? result?.insertId);
+        if (!Number.isSafeInteger(actualId) || actualId <= 0)
+          throw new Error("Die wiederhergestellte Vorbereitungsaufgabe hat keine gültige ID");
+        restoredDocumentPrep.push({ sourceId: row.sourceId, actualId });
+      }
       await insertRows(
         tx,
         prepTaskHelpers,
-        desired.prep.flatMap(row => {
-          const prepTaskId = prepTaskIdByName.get(row.task);
+        desired.prep.flatMap((row, index) => {
+          const prepTaskId = restoredDocumentPrep[index]?.actualId;
           return prepTaskId
             ? row.helperSlots.flatMap((helper, slot) => {
                 const helperId = resolveHelper(helper.helperSourceId, helper.helperName);
@@ -4263,12 +4383,10 @@ export async function restoreProjectDocument(
             : [];
         })
       );
-      const simpleTasks = (wanted: TaskRow[], currentRows: any[]) =>
-        wanted.map(row => ({
-          ...preserveId(
-            row.sourceId,
-            new Set(currentRows.map(item => item.id))
-          ),
+      for (const row of desired.post) {
+        const preservedId = preserveId(row.sourceId, existingPostTaskIds).id;
+        const result: any = await tx.insert(postTasks).values({
+          ...(preservedId ? { id: preservedId } : {}),
           year,
           eventId,
           category: row.category,
@@ -4280,18 +4398,17 @@ export async function restoreProjectDocument(
           status: row.status,
           note: row.note || null,
           sortOrder: row.sortOrder,
-        }));
-      await insertRows(tx, postTasks, simpleTasks(desired.post, snapshot.post));
-      const restoredPostTasks = await tx
-        .select({ id: postTasks.id, task: postTasks.task })
-        .from(postTasks)
-        .where(and(scope(postTasks), eq(postTasks.deleted, false)));
-      const postTaskIdByName = new Map(restoredPostTasks.map(row => [row.task, row.id]));
+        });
+        const actualId = preservedId ?? Number(result?.[0]?.insertId ?? result?.insertId);
+        if (!Number.isSafeInteger(actualId) || actualId <= 0)
+          throw new Error("Die wiederhergestellte Nachbereitungsaufgabe hat keine gültige ID");
+        restoredDocumentPost.push({ sourceId: row.sourceId, actualId });
+      }
       await insertRows(
         tx,
         postTaskHelpers,
-        desired.post.flatMap(row => {
-          const postTaskId = postTaskIdByName.get(row.task);
+        desired.post.flatMap((row, index) => {
+          const postTaskId = restoredDocumentPost[index]?.actualId;
           return postTaskId
             ? row.helperSlots.flatMap((helper, slot) => {
                 const helperId = resolveHelper(helper.helperSourceId, helper.helperName);
@@ -4404,6 +4521,16 @@ export async function restoreProjectDocument(
           sortOrder: row.sortOrder,
         }))
       );
+      await reattachTaskDocumentsAfterRestore(tx, documentScope, detachedTaskDocuments, {
+        prep: stableTaskDocumentRestoreIds(existingPrepTaskIds, restoredDocumentPrep),
+        post: stableTaskDocumentRestoreIds(existingPostTaskIds, restoredDocumentPost),
+        // Anders als die fachliche Kontakt-/Helferauflösung oben gibt es hier
+        // bewusst weder Namens-Fallback noch contactIdByPreviousId (Namensmatch).
+        contacts: stableTaskDocumentRestoreIds(
+          new Set(snapshot.contacts.map(row => row.id)), restoredDocumentContacts
+        ),
+        helpers: stableTaskDocumentRestoreIds(currentHelperIds, restoredDocumentHelpers),
+      }, { prep: existingPrepTaskIds, post: existingPostTaskIds });
     }
 
     const afterSnapshot = await loadSnapshot(tx);

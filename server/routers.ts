@@ -22,6 +22,7 @@ import {
 } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
+import * as taskDocumentService from "./task-documents";
 import { TRPCError } from "@trpc/server";
 import { ShiftUpdateValidationError } from "./shift-update-validation";
 import {
@@ -1583,6 +1584,36 @@ const pdfReadProcedure = moduleReadProcedure("pdf").use(async ({ ctx, next }) =>
   rejectPublicDemoExternalAction(ctx.user);
   return next({ ctx });
 });
+
+/** Keine Namens-/Betreuerzuordnung: Belegrechte stammen aus expliziten Kontoverknüpfungen. */
+async function taskDocumentActor(user: NonNullable<import("./_core/context").TrpcContext["user"]>, area: "prep" | "post"): Promise<taskDocumentService.TaskDocumentActor> {
+  rejectPublicDemoExternalAction(user);
+  const module = area === "prep" ? "preparation" : "postprocessing";
+  await requireCurrentProductModule(module);
+  const accessId = planningTeamAccessIdForUser(user);
+  if (user.role !== "admin" && (accessId === null || !Number.isSafeInteger(accessId) || accessId <= 0)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Ein gültiger persönlicher oder verwalteter Teamzugang ist erforderlich." });
+  }
+  const moduleAccess = await getPlanningTeamModuleAccessForUser(user);
+  requireModuleReadPermission(moduleAccess, module);
+  const ownContactIds = new Set<number>();
+  let personalAccount = user.role === "admin";
+  if (accessId !== null) {
+    const access = await db.getPlanningTeamAccessCredentialForCurrentTenant(accessId);
+    if (typeof access?.contactId === "number") {
+      personalAccount = true;
+      const contact = await db.getContact(access.contactId);
+      if (contact) ownContactIds.add(contact.id);
+    }
+  }
+  return {
+    userId: user.id,
+    personalAccount,
+    ownContactIds,
+    taskWrite: moduleAccess[module] === "write",
+    financeWrite: moduleAccess.finances === "write" && await db.currentProductAllowsPlanningModule("finances"),
+  };
+}
 
 function pdfCapabilityProcedure(capability: ProductCapability) {
   return pdfReadProcedure.use(async ({ ctx, next }) => {
@@ -6500,7 +6531,27 @@ export const appRouter = router({
       }),
   }),
 
+  taskDocuments: router({
+    list: protectedProcedure.input(z.object({ area: z.enum(["prep", "post"]), taskId: z.number().int().positive() })).query(async ({ ctx, input }) =>
+      taskDocumentService.listTaskDocuments(input.area, input.taskId, await taskDocumentActor(ctx.user, input.area))
+    ),
+    payers: protectedProcedure.input(z.object({ area: z.enum(["prep", "post"]) })).query(async ({ ctx, input }) => {
+      await taskDocumentActor(ctx.user, input.area);
+      return taskDocumentService.listTaskDocumentPayers();
+    }),
+    upload: protectedProcedure.input(z.object({ area: z.enum(["prep", "post"]), taskId: z.number().int().positive(), kind: z.enum(["document", "receipt"]), title: z.string().trim().min(1).max(160), paidByKey: z.string().regex(/^(?:contact|helper):[1-9]\d*$/).optional(), fileName: z.string().trim().min(1).max(200), base64: z.string().min(4).max(6990508) })).mutation(async ({ ctx, input }) =>
+      taskDocumentService.uploadTaskDocument(input, await taskDocumentActor(ctx.user, input.area))
+    ),
+    download: protectedProcedure.input(z.object({ area: z.enum(["prep", "post"]), id: z.number().int().positive() })).query(async ({ ctx, input }) =>
+      taskDocumentService.downloadTaskDocument(input.area, input.id, await taskDocumentActor(ctx.user, input.area))
+    ),
+    remove: protectedProcedure.input(z.object({ area: z.enum(["prep", "post"]), id: z.number().int().positive() })).mutation(async ({ ctx, input }) =>
+      taskDocumentService.removeTaskDocument(input.area, input.id, await taskDocumentActor(ctx.user, input.area))
+    ),
+  }),
+
   prep: router({
+    // Aufgaben CRUD bleibt unverändert.
     list: moduleReadProcedure("preparation").query(() => db.listPrep()),
     defaultResponsible: moduleReadProcedure("preparation").query(() =>
       db.getEventPassPrimaryAdminContact()

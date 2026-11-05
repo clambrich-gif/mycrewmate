@@ -8,6 +8,11 @@ import { KlemmiActionPanel } from "@/components/KlemmiActionPanel";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { TaskLogbookHistory } from "@/components/TaskLogbookHistory";
+import {
+  TaskDocumentsButton,
+  TaskDocumentsDialog,
+  useTaskDocumentDrafts,
+} from "@/components/TaskDocumentsDialog";
 import { ViewModeToggle } from "@/components/ViewModeToggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,7 +75,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "wouter";
 import { toast } from "sonner";
 import { productAllowsCapability } from "@shared/product-packages";
@@ -282,6 +287,13 @@ export default function PostProcessing() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<PostTaskRow | null>(null);
   const [form, setForm] = useState<PostForm>(EMPTY_FORM);
+  const documents = useTaskDocumentDrafts("post");
+  const rowDocuments = useTaskDocumentDrafts("post");
+  const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [documentTask, setDocumentTask] = useState<PostTaskRow | null>(null);
+  const [savingTask, setSavingTask] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const saveInFlight = useRef(false);
   const [deleteCandidate, setDeleteCandidate] = useState<PostTaskRow | null>(null);
   const [viewMode, setViewMode] = useViewMode("postprocessing", "liste");
   const [klemmiGuideOpen, setKlemmiGuideOpen] = useState(false);
@@ -296,7 +308,8 @@ export default function PostProcessing() {
   const rows = rawRows as PostTaskRow[];
 
   const { user } = useAuth();
-  const { isTenantAdmin } = useTenantAdministration();
+  const { isTenantAdmin, canWriteModule } = useTenantAdministration();
+  const canWriteTask = canWriteModule("postprocessing");
   const {
     isDefaultMyTasks,
     setDefaultMyTasks,
@@ -335,10 +348,8 @@ export default function PostProcessing() {
     },
     onSuccess: (created: any, _input: any, context: any) => {
       utils.post.list.setData(undefined, (current: any[] = []) =>
-        current.map(row => (row.id === context?.optimisticId ? created : row))
+        current.map(row => (row.id === context?.optimisticId ? { ...row, ...created } : row))
       );
-      setDialogOpen(false);
-      setForm(EMPTY_FORM);
       setKlemmiCreationSignal(Date.now());
       toast.success("Nachbereitungsaufgabe angelegt");
     },
@@ -372,9 +383,6 @@ export default function PostProcessing() {
       return { previous };
     },
     onSuccess: () => {
-      setDialogOpen(false);
-      setEditingTask(null);
-      setForm(EMPTY_FORM);
       toast.success("Nachbereitungsaufgabe gespeichert");
     },
     onError: (error: any, _input: any, context: any) => {
@@ -622,12 +630,20 @@ export default function PostProcessing() {
   };
 
   const openCreate = () => {
+    if (saveInFlight.current || documents.busy) return;
+    documents.clear();
+    setDocumentsOpen(false);
+    setSaveError(null);
     setEditingTask(null);
     setForm(EMPTY_FORM);
     setDialogOpen(true);
   };
 
   const openEdit = (task: PostTaskRow) => {
+    if (saveInFlight.current || documents.busy) return;
+    documents.clear();
+    setDocumentsOpen(false);
+    setSaveError(null);
     const parsedDueDate = parseDueDate(task.dueText);
     setEditingTask(task);
     setForm({
@@ -650,20 +666,25 @@ export default function PostProcessing() {
   };
 
   const closeDialog = () => {
-    if (create.isPending || update.isPending) return;
+    if (saveInFlight.current || create.isPending || update.isPending || documents.busy || documentsOpen) return;
+    documents.clear();
+    setSaveError(null);
     setDialogOpen(false);
     setEditingTask(null);
     setForm(EMPTY_FORM);
   };
 
-  const saveTask = () => {
+  const saveTask = async () => {
+    if (saveInFlight.current || documents.busy || documentsOpen) return;
     const task = form.task.trim();
     if (!task) {
+      setSaveError("Bitte eine Aufgabenbezeichnung eingeben");
       toast.error("Bitte eine Aufgabenbezeichnung eingeben");
       return;
     }
 
     if (form.contactId === "none") {
+      setSaveError("Bitte einen verantwortlichen Ansprechpartner wählen");
       toast.error("Bitte einen verantwortlichen Ansprechpartner wählen");
       return;
     }
@@ -683,17 +704,41 @@ export default function PostProcessing() {
       dueText,
     };
 
-    if (editingTask) {
-      update.mutate({
-        id: editingTask.id,
-        ...payload,
-        ...(logEntry ? { logEntry } : {}),
-      });
-    } else {
-      create.mutate({
-        ...payload,
-        ...(logEntry ? { logEntry } : {}),
-      });
+    saveInFlight.current = true;
+    setSavingTask(true);
+    setSaveError(null);
+    try {
+      let taskId = editingTask?.id;
+      if (editingTask) {
+        await update.mutateAsync({ id: editingTask.id, ...payload, ...(logEntry ? { logEntry } : {}) });
+        setEditingTask({ ...editingTask, ...payload, note: logEntry
+          ? prependPreparationLogbookEntry(logEntry, editingTask.note, new Date(), logbookAuthor)
+          : editingTask.note });
+      } else {
+        const created = await create.mutateAsync({ ...payload, ...(logEntry ? { logEntry } : {}) });
+        taskId = created?.id;
+        if (!taskId || taskId <= 0) throw new Error("Die Aufgabe wurde gespeichert, aber ihre ID fehlt. Bitte die Übersicht neu laden.");
+        // Switch to editing before uploads: a failure must never create the task again.
+        setEditingTask(Object.assign({ ...payload, year: 0, eventId: 0, sortOrder: 0, status: "offen" as const,
+          note: logEntry ? prependPreparationLogbookEntry(logEntry, null, new Date(), logbookAuthor) : null,
+        }, created, { id: taskId }));
+      }
+      setForm(current => ({ ...current, logEntry: "" }));
+      if (!(await documents.flush(taskId!))) {
+        setSaveError("Aufgabe gespeichert. Einige Dateien konnten nicht hochgeladen werden. Die vorgemerkten Dateien können erneut hochgeladen werden.");
+        setDocumentsOpen(true);
+        return;
+      }
+      documents.clear();
+      setDocumentsOpen(false);
+      setDialogOpen(false);
+      setEditingTask(null);
+      setForm(EMPTY_FORM);
+    } catch (cause) {
+      setSaveError(cause instanceof Error ? cause.message : "Speichern fehlgeschlagen. Bitte erneut versuchen.");
+    } finally {
+      saveInFlight.current = false;
+      setSavingTask(false);
     }
   };
 
@@ -705,7 +750,12 @@ export default function PostProcessing() {
     });
   };
 
-  const pending = create.isPending || update.isPending;
+  const pending = savingTask || create.isPending || update.isPending || documents.busy;
+  useEffect(() => {
+    if (editingTask && !documents.busy && documents.drafts.length === 0) {
+      setSaveError(current => current?.startsWith("Aufgabe gespeichert.") ? null : current);
+    }
+  }, [editingTask?.id, documents.busy, documents.drafts.length]);
   const klemmiGuideNeedsSample =
     klemmiGuideStartedEmpty ?? (!isLoading && rows.length === 0);
   const postprocessingLocationGuide = getKlemmiLocationGuideCopy(
@@ -1159,6 +1209,9 @@ export default function PostProcessing() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-1">
+                          <TaskDocumentsButton compact taskTitle={task.task}
+                            disabled={task.id <= 0 || pending}
+                            onClick={() => { rowDocuments.clear(); setDocumentTask(task); }} />
                           <Button
                             type="button"
                             variant="ghost"
@@ -1245,6 +1298,9 @@ export default function PostProcessing() {
                         </div>
                       </div>
                       <div className="flex shrink-0 gap-1">
+                        <TaskDocumentsButton compact taskTitle={task.task}
+                          disabled={task.id <= 0 || pending}
+                          onClick={() => { rowDocuments.clear(); setDocumentTask(task); }} />
                         <Button
                           type="button"
                           variant="outline"
@@ -1369,7 +1425,7 @@ export default function PostProcessing() {
               {editingTask ? "Nachbereitungsaufgabe bearbeiten" : "Neue Nachbereitungsaufgabe"}
             </DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <fieldset disabled={pending} className="grid min-w-0 gap-4 py-2">
             <div data-klemmi-target="postprocessing-area-location" className="rounded-xl border border-rose-100 bg-rose-50/60 p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-rose-800">Aufgabe einordnen</p>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -1537,8 +1593,14 @@ export default function PostProcessing() {
               )}
             </div>
             </div>
-          </div>
-          <DialogFooter>
+          </fieldset>
+          {saveError && <p role="alert" className="break-words text-sm text-destructive">{saveError}</p>}
+          {documents.drafts.length > 0 && <p className="text-xs text-muted-foreground">
+            {documents.drafts.length} Datei(en) {editingTask ? "noch nicht hochgeladen" : "lokal vorgemerkt"}.
+          </p>}
+          <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between">
+            <TaskDocumentsButton disabled={pending} onClick={() => setDocumentsOpen(true)} />
+            <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={closeDialog} disabled={pending}>
               <X className="mr-1 h-4 w-4" />
               Abbrechen
@@ -1552,9 +1614,16 @@ export default function PostProcessing() {
             >
               {pending ? "Speichert …" : "Speichern"}
             </Button>
+            </div>
           </DialogFooter>
+          {documentsOpen && <TaskDocumentsDialog area="post" taskId={editingTask?.id}
+            taskTitle={form.task} canWriteTask={canWriteTask} drafts={documents}
+            onClose={() => setDocumentsOpen(false)} />}
         </DialogContent>
       </Dialog>
+      {documentTask && <TaskDocumentsDialog area="post" taskId={documentTask.id}
+        taskTitle={documentTask.task} canWriteTask={canWriteTask} drafts={rowDocuments}
+        onClose={() => { rowDocuments.clear(); setDocumentTask(null); }} />}
     </div>
   );
 }

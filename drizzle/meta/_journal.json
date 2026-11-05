@@ -736,6 +736,20 @@
       "when": 1793896489264,
       "tag": "0104_thick_tyger_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "5",
+      "when": 1793899616038,
+      "tag": "0105_numerous_chimera",
+      "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "5",
+      "when": 1793899866582,
+      "tag": "0106_early_franklin_storm",
+      "breakpoints": true
     }
   ]
 }
