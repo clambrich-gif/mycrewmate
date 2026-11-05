@@ -27,9 +27,16 @@ FROM ${NODE_BASE_IMAGE} AS runtime
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000 \
-    LOCAL_STORAGE_PATH=/app/data/uploads
+    LOCAL_STORAGE_PATH=/app/data/uploads \
+    PDF_INSPECTOR_PYTHON=/opt/mycrewmate-pdf/bin/python
 
-RUN mkdir -p /app/data/uploads
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-venv \
+    && rm -rf /var/lib/apt/lists/* \
+    && python3 -m venv /opt/mycrewmate-pdf \
+    && mkdir -p /app/data/uploads
+COPY scripts/pdf-inspector-requirements.txt ./scripts/pdf-inspector-requirements.txt
+RUN /opt/mycrewmate-pdf/bin/pip install --no-cache-dir -r scripts/pdf-inspector-requirements.txt
 
 # Der eigene Runner ist in dist/migrate.js gebündelt. Er benötigt weder pnpm
 # noch Drizzle Kit im Runtime-Image und behandelt ausschließlich nachgewiesene
@@ -43,6 +50,13 @@ COPY --from=build /app/scripts ./scripts
 # Servergebundene Medien werden nicht in den Vite-Build übernommen und müssen
 # deshalb für eigene Assetrouten explizit im schlanken Runtime-Image liegen.
 COPY --from=build /app/server/assets ./server/assets
+
+# Verify runtime dependencies and the actual read-only policy inside the image.
+# Only synthetic data; never include a user's invoice in the build context.
+COPY --from=build /app/server/test-fixtures/pdf-policy/xrechnung-cii.pdf /tmp/pdf-policy-fixture.pdf
+RUN /opt/mycrewmate-pdf/bin/python -I -B scripts/inspect-invoice-pdf.py < /tmp/pdf-policy-fixture.pdf \
+    | grep -q '"ok":true' \
+    && rm /tmp/pdf-policy-fixture.pdf
 
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

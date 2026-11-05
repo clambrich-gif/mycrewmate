@@ -15,12 +15,13 @@ import {
   currentTenantId,
 } from "./year-context";
 import { storagePut, storageRead, storageDelete } from "./storage";
+import { inspectPdfUpload } from "./pdf-upload-policy";
 
 export const MAX_FINANCE_PDF_BYTES = 5 * 1024 * 1024;
 const MAX_ARCHIVE_BYTES = 100 * 1024 * 1024;
 const MAX_EVENT_RECEIPT_BYTES = 250 * 1024 * 1024;
 
-export function validateFinancePdf(fileName: string, base64: string) {
+export async function validateFinancePdf(fileName: string, base64: string) {
   if (
     !/\.pdf$/i.test(fileName.trim()) ||
     !/^[A-Za-z0-9+/]+={0,2}$/.test(base64) ||
@@ -49,18 +50,9 @@ export function validateFinancePdf(fileName: string, base64: string) {
       message: "Die Datei ist keine vollständige PDF.",
     });
   }
-  // Keine aktiven Aktionen/Dateianhänge in Belegen; keine Behauptung eines Virenscans.
-  if (
-    /\/(?:JavaScript|JS|Launch|EmbeddedFile|RichMedia|XFA|Encrypt)\b/.test(
-      bytes.toString("latin1")
-    )
-  ) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message:
-        "Bitte eine PDF ohne aktive Inhalte, eingebettete Dateien oder Passwortschutz hochladen.",
-    });
-  }
+  // Inspect actual PDF objects and allow only validated XML invoice attachments.
+  // Original bytes remain unchanged; this is not a claim of an antivirus scan.
+  await inspectPdfUpload(bytes);
   const safeName =
     fileName
       .replace(/[/\\\x00-\x1f\x7f]/g, "_")
@@ -177,7 +169,7 @@ export async function uploadFinanceReceipt(input: {
   pdfBase64: string;
 }) {
   await requireFinance(input.financeId);
-  const pdf = validateFinancePdf(input.fileName, input.pdfBase64);
+  const pdf = await validateFinancePdf(input.fileName, input.pdfBase64);
   const db = await database();
   // Speicherung erfolgt nur privat. Die zurückgegebene öffentliche URL wird nie benutzt.
   const stored = await storagePut(

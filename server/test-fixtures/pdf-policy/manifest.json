@@ -1,0 +1,114 @@
+[
+  {
+    "filename": "plain.pdf",
+    "expected": "allow"
+  },
+  {
+    "filename": "xrechnung-cii.pdf",
+    "expected": "allow"
+  },
+  {
+    "filename": "ubl-invoice.pdf",
+    "expected": "allow"
+  },
+  {
+    "filename": "link.pdf",
+    "expected": "allow"
+  },
+  {
+    "filename": "dangerous-javascript.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "escaped-javascript.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "launch.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "extra-attachment.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "invalid-xml.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "wrong-profile.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "dtd-xml.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "xinclude-xml.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "encrypted.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "compressed-javascript.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "xml-bomb.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "next-action.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "automatic-action.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "embedded-executable-only.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "duplicate-action.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "partial-action.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "cii-binary-attachment.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "type3-glyph-a.pdf",
+    "expected": "allow"
+  },
+  {
+    "filename": "type3-glyph-b.pdf",
+    "expected": "allow"
+  },
+  {
+    "filename": "object-stream-javascript.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "xml-stylesheet.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "xfa.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "aa.pdf",
+    "expected": "deny"
+  },
+  {
+    "filename": "rich-media.pdf",
+    "expected": "deny"
+  }
+]

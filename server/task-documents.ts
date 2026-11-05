@@ -22,6 +22,7 @@ import {
 import { storagePut, storageRead, storageDelete } from "./storage";
 import { validateFinancePdf } from "./finance-documents";
 import { planningTeamAccessOpenId } from "./password-auth";
+import { PDF_UPLOAD_POLICY_VERSION } from "./pdf-upload-policy";
 
 export type TaskDocumentArea = "prep" | "post";
 export type TaskDocumentActor = {
@@ -59,7 +60,7 @@ export async function validateTaskFile(
     badFile("Die Datei darf höchstens 5 MiB groß sein.");
   let mimeType: string;
   if (ext === "pdf") {
-    const pdf = validateFinancePdf(fileName, base64);
+    const pdf = await validateFinancePdf(fileName, base64);
     bytes = pdf.bytes;
     mimeType = "application/pdf";
   } else if (ext === "jpg" || ext === "jpeg") {
@@ -261,6 +262,7 @@ export async function listTaskDocuments(
       })),
     canUploadDocuments: actor.taskWrite,
     canUploadReceipts: true as const,
+    pdfUploadPolicyVersion: PDF_UPLOAD_POLICY_VERSION,
     receiptIdentityNotice:
       actor.personalAccount || actor.financeWrite
         ? null

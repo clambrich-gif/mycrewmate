@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { getTableName, sql } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 vi.mock("./storage", () => ({
@@ -22,7 +23,9 @@ import {
 
 const scope = { tenantId: "fixture-verein", year: 2027, eventId: 81 };
 const inScope = <T>(fn: () => T) => withPlanningScope(scope, fn);
-const pdfBase64 = Buffer.from("%PDF-1.7\nfixture\n%%EOF").toString("base64");
+const pdfBase64 = readFileSync(
+  "server/test-fixtures/pdf-policy/plain.pdf"
+).toString("base64");
 const finance = {
   id: 7,
   eventId: 81,
@@ -121,47 +124,47 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("PDF-Prüfung ohne Speicherzugriff", () => {
-  it("erkennt eine vollständige PDF und bereinigt Pfad-/Steuerzeichen im Dateinamen", () => {
-    const valid = validateFinancePdf("../pokale\n.pdf", pdfBase64);
-    expect(valid.bytes.toString()).toContain("%PDF-1.7");
+  it("erkennt eine vollständige PDF und bereinigt Pfad-/Steuerzeichen im Dateinamen", async () => {
+    const valid = await validateFinancePdf("../pokale\n.pdf", pdfBase64);
+    expect(valid.bytes.toString()).toContain("%PDF-1.");
     expect(valid.fileName).not.toMatch(/[/\\\n]/);
   });
-  it("weist Nicht-PDF, abgeschnittene und zu große PDFs zurück", () => {
-    expect(() => validateFinancePdf("datei.txt", pdfBase64)).toThrow();
-    expect(() =>
+  it("weist Nicht-PDF, abgeschnittene und zu große PDFs zurück", async () => {
+    await expect(validateFinancePdf("datei.txt", pdfBase64)).rejects.toThrow();
+    await expect(
       validateFinancePdf(
         "datei.pdf",
         Buffer.from("Kein PDF").toString("base64")
       )
-    ).toThrow();
-    expect(() =>
+    ).rejects.toThrow();
+    await expect(
       validateFinancePdf(
         "datei.pdf",
         Buffer.from("%PDF-1.7 ohne Ende").toString("base64")
       )
-    ).toThrow();
-    expect(() =>
+    ).rejects.toThrow();
+    await expect(
       validateFinancePdf(
         "datei.pdf",
         Buffer.alloc(MAX_FINANCE_PDF_BYTES + 1).toString("base64")
       )
-    ).toThrow("höchstens 5 MB");
-    expect(() =>
+    ).rejects.toThrow("höchstens 5 MB");
+    await expect(
       validateFinancePdf(
         "datei.pdf",
         "data:application/pdf;base64," + pdfBase64
       )
-    ).toThrow();
+    ).rejects.toThrow();
   });
   it.each(["JavaScript", "Launch", "EmbeddedFile", "Encrypt", "XFA"])(
     "weist aktive/verschlüsselte PDF-Inhalte %s zurück",
-    action => {
-      expect(() =>
+    async action => {
+      await expect(
         validateFinancePdf(
           "datei.pdf",
           Buffer.from(`%PDF-1.7\n/${action}\n%%EOF`).toString("base64")
         )
-      ).toThrow();
+      ).rejects.toThrow();
     }
   );
 });

@@ -7,6 +7,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { readFileSync } from "node:fs";
 import { getTableName, type SQL } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import PDFDocument from "pdfkit";
@@ -347,6 +348,23 @@ describe("validateTaskFile — echte In-Memory-Dateien, keine DB/Storage-Zugriff
       expect(storagePut).not.toHaveBeenCalled();
     }
   );
+  it.each(["document", "receipt"] as const)(
+    "akzeptiert geprüfte xrechnung.xml als %s und bewahrt das Original",
+    async kind => {
+      const original = readFileSync(
+        "server/test-fixtures/pdf-policy/xrechnung-cii.pdf"
+      );
+      const result = await validateTaskFile(
+        kind,
+        "rechnung.pdf",
+        toBase64(original)
+      );
+      expect(result.bytes).toEqual(original);
+      expect(result.mimeType).toBe("application/pdf");
+      expect(db.getDb).not.toHaveBeenCalled();
+      expect(storagePut).not.toHaveBeenCalled();
+    }
+  );
   it.each(["jpg", "jpeg", "docx", "doc"])(
     "weist Beleg mit Nicht-PDF-Endung .%s zurück",
     async ext => {
@@ -393,14 +411,19 @@ describe("validateTaskFile — echte In-Memory-Dateien, keine DB/Storage-Zugriff
       toBase64(pdfBytes.subarray(0, pdfBytes.indexOf("%%EOF")))
     );
   });
-  it.each(["JavaScript", "Launch", "EmbeddedFile", "Encrypt", "XFA"])(
-    "weist aktive PDF-Inhalte /%s zurück",
-    async content => {
-      const mutated = Buffer.from(
-        pdfBytes.toString("latin1").replace("%%EOF", `/${content}\n%%EOF`),
-        "latin1"
+  it.each([
+    "dangerous-javascript.pdf",
+    "escaped-javascript.pdf",
+    "launch.pdf",
+    "extra-attachment.pdf",
+    "encrypted.pdf",
+  ])(
+    "weist echte gefährliche/verschlüsselte PDF %s zurück",
+    async fixtureName => {
+      const invalid = readFileSync(
+        `server/test-fixtures/pdf-policy/${fixtureName}`
       );
-      await expectBadFile("test.pdf", toBase64(mutated));
+      await expectBadFile("test.pdf", toBase64(invalid));
     }
   );
   it.each(["jpg", "jpeg"])(
