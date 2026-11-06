@@ -11,8 +11,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
+import { productAllowsCapability } from "@shared/product-packages";
 import { Download, FileText, Trash2, Upload } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export const MAX_FINANCE_PDF_BYTES = 5 * 1024 * 1024;
@@ -93,12 +94,22 @@ export function FinanceReceiptBackupButton({
   canWrite: boolean;
   financeId?: number;
 }) {
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery();
+  const allowsDocuments = productAllowsCapability(
+    tenantProduct?.packageId ?? "event_pass", "document_attachments"
+  );
+  const access = useRef(canWrite && allowsDocuments);
+  access.current = canWrite && allowsDocuments;
+  useEffect(() => {
+    access.current = canWrite && allowsDocuments;
+    return () => { access.current = false; };
+  }, [canWrite, allowsDocuments]);
   const exportReceipts = trpc.finances.exportReceipts.useMutation();
   const requestInFlight = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const backup = async () => {
-    if (!canWrite || requestInFlight.current) return;
+    if (!access.current || requestInFlight.current) return;
     requestInFlight.current = true;
     setBusy(true);
     setError(null);
@@ -106,6 +117,7 @@ export function FinanceReceiptBackupButton({
       const file = await exportReceipts.mutateAsync(
         financeId === undefined ? {} : { financeId }
       );
+      if (!access.current) return;
       downloadFinanceFile(file, "application/zip");
       toast.success("ZIP-Sicherung heruntergeladen");
     } catch (cause) {
@@ -119,7 +131,7 @@ export function FinanceReceiptBackupButton({
       setBusy(false);
     }
   };
-  if (!canWrite) return null;
+  if (!canWrite || !allowsDocuments) return null;
   return (
     <div className="space-y-1.5">
       <Button
@@ -155,14 +167,24 @@ export function FinanceReceiptsDialog({
   canWrite: boolean;
   onClose: () => void;
 }) {
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery();
+  const allowsDocuments = productAllowsCapability(
+    tenantProduct?.packageId ?? "event_pass", "document_attachments"
+  );
+  const access = useRef(canWrite && allowsDocuments);
+  access.current = canWrite && allowsDocuments;
+  useEffect(() => {
+    access.current = canWrite && allowsDocuments;
+    return () => { access.current = false; };
+  }, [canWrite, allowsDocuments]);
   const utils = trpc.useUtils();
   const input = useMemo(() => ({ financeId: row.id }), [row.id]);
   const receipts = trpc.finances.receipts.useQuery(input, {
-    enabled: canWrite,
+    enabled: canWrite && allowsDocuments,
     retry: false,
   });
   const payers = trpc.finances.payers.useQuery(undefined, {
-    enabled: canWrite,
+    enabled: canWrite && allowsDocuments,
     retry: false,
   });
   const upload = trpc.finances.uploadReceipt.useMutation();
@@ -188,7 +210,7 @@ export function FinanceReceiptsDialog({
   );
 
   const run = async (label: string, operation: () => Promise<void>) => {
-    if (!canWrite || requestInFlight.current) return;
+    if (!access.current || requestInFlight.current) return;
     requestInFlight.current = true;
     setBusy(label);
     setError(null);
@@ -207,6 +229,7 @@ export function FinanceReceiptsDialog({
   };
 
   const submitUpload = () => {
+    if (!access.current) return;
     if (!title.trim() || !paidBy || !pdf) {
       setError(
         "Bitte Bezeichnung, den Namen der zahlenden Person und genau eine PDF-Datei angeben."
@@ -215,6 +238,7 @@ export function FinanceReceiptsDialog({
     }
     void run("upload", async () => {
       const pdfBase64 = await financePdfBase64(pdf);
+      if (!access.current) return;
       await upload.mutateAsync({
         financeId: row.id,
         title: title.trim(),
@@ -222,6 +246,7 @@ export function FinanceReceiptsDialog({
         fileName: pdf.name,
         pdfBase64,
       });
+      if (!access.current) return;
       setTitle("");
       setPayerChoice("");
       setExternalPayer("");
@@ -232,7 +257,7 @@ export function FinanceReceiptsDialog({
     });
   };
 
-  if (!canWrite) return null;
+  if (!canWrite || !allowsDocuments) return null;
   return (
     <Dialog
       open
@@ -266,7 +291,7 @@ export function FinanceReceiptsDialog({
                 variant="outline"
                 size="sm"
                 disabled={receipts.isFetching || Boolean(busy)}
-                onClick={() => void receipts.refetch()}
+                onClick={() => void run("refresh", async () => { await receipts.refetch(); })}
               >
                 Erneut laden
               </Button>
@@ -312,6 +337,7 @@ export function FinanceReceiptsDialog({
                           const file = await download.mutateAsync({
                             id: receipt.id,
                           });
+                          if (!access.current) return;
                           downloadFinanceFile(file, "application/pdf");
                         })
                       }
@@ -357,6 +383,7 @@ export function FinanceReceiptsDialog({
                         onClick={() =>
                           void run(`remove:${receipt.id}`, async () => {
                             await remove.mutateAsync({ id: receipt.id });
+                            if (!access.current) return;
                             setDeleteId(null);
                             await utils.finances.receipts.invalidate(input);
                             toast.success("Beleg gelöscht");

@@ -31,6 +31,7 @@ const CAPABILITY_LABEL: Record<ProductCapability, string> = {
   materials: "Materialplanung",
   donations: "Spendenverwaltung",
   finances: "Finanzübersicht",
+  document_attachments: "Belege und Dokumente",
   pdf: "PDF-Ausgabe",
   locations: "Orte & Standorte",
   chat: "Team-Chat",

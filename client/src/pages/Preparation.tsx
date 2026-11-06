@@ -345,16 +345,28 @@ export default function Preparation() {
 
   const utils = trpc.useUtils();
   const { data: rawRows = [], isLoading } = trpc.prep.list.useQuery();
-  const documentCountsInput = useMemo(() => ({ area: "prep" as const }), []);
-  const { data: documentCounts } = trpc.taskDocuments.counts.useQuery(documentCountsInput);
-  const documentCountMap = useMemo(
-    () => new Map((documentCounts ?? []).map(row => [row.taskId, row.count])),
-    [documentCounts]
-  );
   const { data: tenantProduct } = trpc.tenantProduct.current.useQuery(undefined, {
     staleTime: 60_000,
   });
   const currentPackageId = tenantProduct?.packageId ?? "event_pass";
+  const allowsDocuments = productAllowsCapability(currentPackageId, "document_attachments");
+  const documentCountsInput = useMemo(() => ({ area: "prep" as const }), []);
+  const { data: documentCounts } = trpc.taskDocuments.counts.useQuery(documentCountsInput, {
+    enabled: allowsDocuments,
+    retry: false,
+  });
+  const documentCountMap = useMemo(
+    () => new Map((allowsDocuments ? documentCounts ?? [] : []).map(row => [row.taskId, row.count])),
+    [allowsDocuments, documentCounts]
+  );
+  useEffect(() => {
+    if (!allowsDocuments) {
+      setDocumentsOpen(false);
+      setDocumentTask(null);
+      documents.clear();
+      rowDocuments.clear();
+    }
+  }, [allowsDocuments]);
   const isEventPass = currentPackageId === "event_pass";
   const allowsContacts = productAllowsCapability(currentPackageId, "contacts");
   const allowsHelperAge = productAllowsCapability(currentPackageId, "helper_age");
@@ -720,7 +732,7 @@ export default function Preparation() {
   };
 
   const openCreate = () => {
-    if (saveInFlight.current || documents.busy) return;
+    if (saveInFlight.current || (allowsDocuments && documents.busy)) return;
     documents.clear();
     setDocumentsOpen(false);
     setSaveError(null);
@@ -731,7 +743,7 @@ export default function Preparation() {
   };
 
   const openEdit = (task: PrepTaskRow) => {
-    if (saveInFlight.current || documents.busy) return;
+    if (saveInFlight.current || (allowsDocuments && documents.busy)) return;
     documents.clear();
     setDocumentsOpen(false);
     setSaveError(null);
@@ -758,7 +770,7 @@ export default function Preparation() {
   };
 
   const closeDialog = () => {
-    if (saveInFlight.current || create.isPending || update.isPending || documents.busy || documentsOpen) return;
+    if (saveInFlight.current || create.isPending || update.isPending || (allowsDocuments && (documents.busy || documentsOpen))) return;
     documents.clear();
     setSaveError(null);
     responsibleSelectionTouched.current = false;
@@ -768,7 +780,7 @@ export default function Preparation() {
   };
 
   const saveTask = async () => {
-    if (saveInFlight.current || documents.busy || documentsOpen) return;
+    if (saveInFlight.current || (allowsDocuments && (documents.busy || documentsOpen))) return;
     const task = form.task.trim();
     if (!task) {
       setSaveError("Bitte eine Aufgabenbezeichnung eingeben");
@@ -812,7 +824,7 @@ export default function Preparation() {
         }, created, { id: taskId }));
       }
       setForm(current => ({ ...current, logEntry: "" }));
-      if (!(await documents.flush(taskId!))) {
+      if (allowsDocuments && !(await documents.flush(taskId!))) {
         setSaveError("Aufgabe gespeichert. Einige Dateien konnten nicht hochgeladen werden. Die vorgemerkten Dateien können erneut hochgeladen werden.");
         setDocumentsOpen(true);
         return;
@@ -838,7 +850,7 @@ export default function Preparation() {
     });
   };
 
-  const pending = savingTask || create.isPending || update.isPending || documents.busy;
+  const pending = savingTask || create.isPending || update.isPending || (allowsDocuments && documents.busy);
   useEffect(() => {
     if (editingTask && !documents.busy && documents.drafts.length === 0) {
       setSaveError(current => current?.startsWith("Aufgabe gespeichert.") ? null : current);
@@ -1340,9 +1352,10 @@ export default function Preparation() {
                       <td className="px-4 py-3 align-top text-right">
                         <div className="flex items-center justify-center gap-1">
                           <TaskDocumentsButton compact taskTitle={task.task}
+                            locked={!allowsDocuments}
                             count={documentCountMap.get(task.id)}
                             disabled={task.id <= 0 || pending}
-                            onClick={() => { rowDocuments.clear(); setDocumentTask(task); }} />
+                            onClick={() => { if (allowsDocuments) { rowDocuments.clear(); setDocumentTask(task); } }} />
                           <Button
                             type="button"
                             variant="outline"
@@ -1438,9 +1451,10 @@ export default function Preparation() {
                       </div>
                       <div className="flex shrink-0 gap-1">
                         <TaskDocumentsButton compact taskTitle={task.task}
+                          locked={!allowsDocuments}
                           count={documentCountMap.get(task.id)}
                           disabled={task.id <= 0 || pending}
-                          onClick={() => { rowDocuments.clear(); setDocumentTask(task); }} />
+                          onClick={() => { if (allowsDocuments) { rowDocuments.clear(); setDocumentTask(task); } }} />
                         <Button
                           type="button"
                           variant="outline"
@@ -1789,11 +1803,11 @@ export default function Preparation() {
             </div>
           </fieldset>
           {saveError && <p role="alert" className="break-words text-sm text-destructive">{saveError}</p>}
-          {documents.drafts.length > 0 && <p className="text-xs text-muted-foreground">
+          {allowsDocuments && documents.drafts.length > 0 && <p className="text-xs text-muted-foreground">
             {documents.drafts.length} Datei(en) {editingTask ? "noch nicht hochgeladen" : "lokal vorgemerkt"}.
           </p>}
           <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between">
-            <TaskDocumentsButton guideTarget="preparation-documents" disabled={pending} onClick={() => setDocumentsOpen(true)} />
+            <TaskDocumentsButton guideTarget="preparation-documents" disabled={pending} locked={!allowsDocuments} onClick={() => { if (allowsDocuments) setDocumentsOpen(true); }} />
             <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={closeDialog} disabled={pending}>
               <X className="mr-1 h-4 w-4" />
@@ -1804,12 +1818,12 @@ export default function Preparation() {
             </Button>
             </div>
           </DialogFooter>
-          {documentsOpen && <TaskDocumentsDialog area="prep" taskId={editingTask?.id}
+          {allowsDocuments && documentsOpen && <TaskDocumentsDialog area="prep" taskId={editingTask?.id}
             taskTitle={form.task} canWriteTask={canWriteTask} drafts={documents}
             onClose={() => setDocumentsOpen(false)} />}
         </DialogContent>
       </Dialog>
-      {documentTask && <TaskDocumentsDialog area="prep" taskId={documentTask.id}
+      {allowsDocuments && documentTask && <TaskDocumentsDialog area="prep" taskId={documentTask.id}
         taskTitle={documentTask.task} canWriteTask={canWriteTask} drafts={rowDocuments}
         onClose={() => { rowDocuments.clear(); setDocumentTask(null); }} />}
     </div>

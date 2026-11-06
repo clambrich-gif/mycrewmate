@@ -13,6 +13,7 @@ type GuideProps = ComponentProps<typeof KlemmiSurfaceGuide>;
 const state = vi.hoisted(() => ({
   canRead: true,
   canWrite: false,
+  packageId: "pro",
   authLoading: false,
   rightsLoading: false,
   captureGuide: vi.fn(),
@@ -89,6 +90,9 @@ vi.mock("@/lib/trpc", () => {
         finances: { list: { invalidate: vi.fn() } },
         dashboard: { invalidate: vi.fn() },
       }),
+      tenantProduct: {
+        current: { useQuery: () => ({ data: { packageId: state.packageId } }) },
+      },
       finances: {
         list: {
           useQuery: (input: unknown, options: unknown) => {
@@ -122,7 +126,7 @@ const EXPECTED_FINANCE_SCRIPTS = {
   "finances-notebook-read":
     "Notizen zur Kategorie ansehen. Über Notizbuch öffnest du den bisherigen Verlauf. Mit deinem Lesezugriff kannst du die Notizen ansehen, aber keine neuen Einträge ergänzen oder Finanzwerte ändern.",
   "finances-receipts":
-    "Rechnungen zur Kategorie ablegen. Über Belege öffnest du die Rechnungsliste. Gib eine Bezeichnung ein, wähle die Person unter Bezahlt von und lade eine PDF hoch. Du kannst mehrere Rechnungen je Kategorie hinterlegen. Über den PDF-Button lädst du die Rechnung herunter und kannst sie anschließend auf deinem Gerät öffnen. Hochladen, Anzeigen und Herunterladen sind hier ausschließlich mit Finanz-Schreibrecht möglich. Die Belege verändern keine Einnahmen, Ausgaben oder den Saldo. Über Belege sichern kannst du die Rechnungen der Veranstaltung getrennt als ZIP sichern. In dieser Führung wird nichts hochgeladen oder heruntergeladen.",
+    "Belege und Dokumente gibt es ab Pro. Je nach Berechtigung kannst du sie hochladen, anschauen oder bearbeiten.",
   "finances-balance":
     "Den Saldo gemeinsam prüfen. Ganz unten werden Einnahmen und Ausgaben aller Kategorien zusammengefasst. Die Differenz zeigt den aktuellen finanziellen Stand. Rechnungsbelege bleiben davon getrennt.",
   "finances-complete":
@@ -134,6 +138,7 @@ beforeEach(() => {
   vi.stubGlobal("React", React);
   state.canRead = true;
   state.canWrite = false;
+  state.packageId = "pro";
   state.authLoading = false;
   state.rightsLoading = false;
   state.rows = [
@@ -250,15 +255,8 @@ describe("Klemmi finance guide (synthetic fixtures only)", () => {
       "keine neuen Einträge ergänzen oder Finanzwerte ändern"
     );
     const receipts = guide.steps.find(step => step.key === "receipts");
-    expect(receipts?.text).toContain(
-      "ausschließlich mit Finanz-Schreibrecht möglich"
-    );
-    expect(receipts?.text).toContain(
-      "Die Belege verändern keine Einnahmen, Ausgaben oder den Saldo"
-    );
-    expect(receipts?.text).toContain(
-      "In dieser Führung wird nichts hochgeladen oder heruntergeladen"
-    );
+    expect(receipts?.text).toBe(EXPECTED_FINANCE_SCRIPTS["finances-receipts"]);
+    expect(receipts?.text).not.toMatch(/Schreibrecht|ZIP|heruntergeladen/);
     expect(html).toContain("Notizbuch");
     expect(html).not.toContain("Belege");
     expect(html).not.toContain("Neue Kategorie");
@@ -280,8 +278,8 @@ describe("Klemmi finance guide (synthetic fixtures only)", () => {
       text: EXPECTED_FINANCE_SCRIPTS["finances-notebook"],
       action: "Belege erklären",
     });
-    expect(guide.steps.find(step => step.key === "receipts")?.text).toContain(
-      "getrennt als ZIP sichern"
+    expect(guide.steps.find(step => step.key === "receipts")?.text).toBe(
+      EXPECTED_FINANCE_SCRIPTS["finances-receipts"]
     );
     expect(html).toContain("Belege sichern (ZIP)");
     expect(html).not.toContain("Löschen");
@@ -314,4 +312,24 @@ describe("Klemmi finance guide (synthetic fixtures only)", () => {
         .toBe(script);
     }
   });
+
+  it.each(["event_pass", "light", "pro", "enterprise"])(
+    "keeps the short receipt guide explanation-only for %s, with a real locked writer anchor below Pro",
+    packageId => {
+      state.packageId = packageId;
+      state.canWrite = true;
+      const { html, guide } = renderGuide();
+      const receiptStep = guide.steps.find(step => step.key === "receipts");
+      expect(receiptStep?.text).toBe(EXPECTED_FINANCE_SCRIPTS["finances-receipts"]);
+      expect(receiptStep?.text).toBe(KLEMMI_AUDIO_SCRIPTS["preparation-documents"]);
+      expect(receiptStep?.text).toBe(KLEMMI_AUDIO_SCRIPTS["postprocessing-documents"]);
+      expect(receiptStep?.selector).toBe('[data-klemmi-target="finances-receipts"]');
+      const buttons = html.match(/<button\b[^>]*data-klemmi-target="finances-receipts"[^>]*>/g) ?? [];
+      expect(buttons).toHaveLength(2);
+      for (const button of buttons)
+        expect(button).toContain(`aria-disabled="${packageId === "event_pass" || packageId === "light"}"`);
+      expect(html.includes("Belege sichern (ZIP)")).toBe(packageId === "pro" || packageId === "enterprise");
+      expectExplanationOnly(guide);
+    }
+  );
 });

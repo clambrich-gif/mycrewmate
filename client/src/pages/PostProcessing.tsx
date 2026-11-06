@@ -303,12 +303,26 @@ export default function PostProcessing() {
 
   const utils = trpc.useUtils();
   const { data: rawRows = [], isLoading } = trpc.post.list.useQuery();
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery();
+  const currentPackageId = tenantProduct?.packageId ?? "event_pass";
+  const allowsDocuments = productAllowsCapability(currentPackageId, "document_attachments");
   const documentCountsInput = useMemo(() => ({ area: "post" as const }), []);
-  const { data: documentCounts } = trpc.taskDocuments.counts.useQuery(documentCountsInput);
+  const { data: documentCounts } = trpc.taskDocuments.counts.useQuery(documentCountsInput, {
+    enabled: allowsDocuments,
+    retry: false,
+  });
   const documentCountMap = useMemo(
-    () => new Map((documentCounts ?? []).map(row => [row.taskId, row.count])),
-    [documentCounts]
+    () => new Map((allowsDocuments ? documentCounts ?? [] : []).map(row => [row.taskId, row.count])),
+    [allowsDocuments, documentCounts]
   );
+  useEffect(() => {
+    if (!allowsDocuments) {
+      setDocumentsOpen(false);
+      setDocumentTask(null);
+      documents.clear();
+      rowDocuments.clear();
+    }
+  }, [allowsDocuments]);
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
   const { data: locations = [] } = trpc.locations.list.useQuery();
@@ -437,8 +451,6 @@ export default function PostProcessing() {
     () => new Map(contacts.map(contact => [contact.id, contact.name])),
     [contacts]
   );
-  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery();
-  const currentPackageId = tenantProduct?.packageId ?? "event_pass";
   const allowsHelperAge = productAllowsCapability(currentPackageId, "helper_age");
 
   const helperMap = useMemo(
@@ -637,7 +649,7 @@ export default function PostProcessing() {
   };
 
   const openCreate = () => {
-    if (saveInFlight.current || documents.busy) return;
+    if (saveInFlight.current || (allowsDocuments && documents.busy)) return;
     documents.clear();
     setDocumentsOpen(false);
     setSaveError(null);
@@ -647,7 +659,7 @@ export default function PostProcessing() {
   };
 
   const openEdit = (task: PostTaskRow) => {
-    if (saveInFlight.current || documents.busy) return;
+    if (saveInFlight.current || (allowsDocuments && documents.busy)) return;
     documents.clear();
     setDocumentsOpen(false);
     setSaveError(null);
@@ -673,7 +685,7 @@ export default function PostProcessing() {
   };
 
   const closeDialog = () => {
-    if (saveInFlight.current || create.isPending || update.isPending || documents.busy || documentsOpen) return;
+    if (saveInFlight.current || create.isPending || update.isPending || (allowsDocuments && (documents.busy || documentsOpen))) return;
     documents.clear();
     setSaveError(null);
     setDialogOpen(false);
@@ -682,7 +694,7 @@ export default function PostProcessing() {
   };
 
   const saveTask = async () => {
-    if (saveInFlight.current || documents.busy || documentsOpen) return;
+    if (saveInFlight.current || (allowsDocuments && (documents.busy || documentsOpen))) return;
     const task = form.task.trim();
     if (!task) {
       setSaveError("Bitte eine Aufgabenbezeichnung eingeben");
@@ -731,7 +743,7 @@ export default function PostProcessing() {
         }, created, { id: taskId }));
       }
       setForm(current => ({ ...current, logEntry: "" }));
-      if (!(await documents.flush(taskId!))) {
+      if (allowsDocuments && !(await documents.flush(taskId!))) {
         setSaveError("Aufgabe gespeichert. Einige Dateien konnten nicht hochgeladen werden. Die vorgemerkten Dateien können erneut hochgeladen werden.");
         setDocumentsOpen(true);
         return;
@@ -757,7 +769,7 @@ export default function PostProcessing() {
     });
   };
 
-  const pending = savingTask || create.isPending || update.isPending || documents.busy;
+  const pending = savingTask || create.isPending || update.isPending || (allowsDocuments && documents.busy);
   useEffect(() => {
     if (editingTask && !documents.busy && documents.drafts.length === 0) {
       setSaveError(current => current?.startsWith("Aufgabe gespeichert.") ? null : current);
@@ -1230,9 +1242,10 @@ export default function PostProcessing() {
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-1">
                           <TaskDocumentsButton compact taskTitle={task.task}
+                            locked={!allowsDocuments}
                             count={documentCountMap.get(task.id)}
                             disabled={task.id <= 0 || pending}
-                            onClick={() => { rowDocuments.clear(); setDocumentTask(task); }} />
+                            onClick={() => { if (allowsDocuments) { rowDocuments.clear(); setDocumentTask(task); } }} />
                           <Button
                             type="button"
                             variant="ghost"
@@ -1320,9 +1333,10 @@ export default function PostProcessing() {
                       </div>
                       <div className="flex shrink-0 gap-1">
                         <TaskDocumentsButton compact taskTitle={task.task}
+                          locked={!allowsDocuments}
                           count={documentCountMap.get(task.id)}
                           disabled={task.id <= 0 || pending}
-                          onClick={() => { rowDocuments.clear(); setDocumentTask(task); }} />
+                          onClick={() => { if (allowsDocuments) { rowDocuments.clear(); setDocumentTask(task); } }} />
                         <Button
                           type="button"
                           variant="outline"
@@ -1617,11 +1631,11 @@ export default function PostProcessing() {
             </div>
           </fieldset>
           {saveError && <p role="alert" className="break-words text-sm text-destructive">{saveError}</p>}
-          {documents.drafts.length > 0 && <p className="text-xs text-muted-foreground">
+          {allowsDocuments && documents.drafts.length > 0 && <p className="text-xs text-muted-foreground">
             {documents.drafts.length} Datei(en) {editingTask ? "noch nicht hochgeladen" : "lokal vorgemerkt"}.
           </p>}
           <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between">
-            <TaskDocumentsButton guideTarget="postprocessing-documents" disabled={pending} onClick={() => setDocumentsOpen(true)} />
+            <TaskDocumentsButton guideTarget="postprocessing-documents" disabled={pending} locked={!allowsDocuments} onClick={() => { if (allowsDocuments) setDocumentsOpen(true); }} />
             <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={closeDialog} disabled={pending}>
               <X className="mr-1 h-4 w-4" />
@@ -1638,12 +1652,12 @@ export default function PostProcessing() {
             </Button>
             </div>
           </DialogFooter>
-          {documentsOpen && <TaskDocumentsDialog area="post" taskId={editingTask?.id}
+          {allowsDocuments && documentsOpen && <TaskDocumentsDialog area="post" taskId={editingTask?.id}
             taskTitle={form.task} canWriteTask={canWriteTask} drafts={documents}
             onClose={() => setDocumentsOpen(false)} />}
         </DialogContent>
       </Dialog>
-      {documentTask && <TaskDocumentsDialog area="post" taskId={documentTask.id}
+      {allowsDocuments && documentTask && <TaskDocumentsDialog area="post" taskId={documentTask.id}
         taskTitle={documentTask.task} canWriteTask={canWriteTask} drafts={rowDocuments}
         onClose={() => { rowDocuments.clear(); setDocumentTask(null); }} />}
     </div>

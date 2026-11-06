@@ -265,7 +265,7 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "finances-category": "Neue Kategorie im Dialog. Über Neue Kategorie öffnest du das Eingabefenster. Dort trägst du die Kategorie, Einnahmen, Ausgaben und bei Bedarf eine erste Notiz ein. Erst Speichern übernimmt deine Angaben. Bestehende Kategorien änderst du über Bearbeiten.",
   "finances-notebook": "Absprachen im Notizbuch festhalten. Über Notizbuch öffnest du den Verlauf einer Kategorie. Neue Einträge werden mit Datum, Uhrzeit und deinem Namen ergänzt. Bisherige Notizen bleiben erhalten. So bleiben wichtige Absprachen nachvollziehbar.",
   "finances-notebook-read": "Notizen zur Kategorie ansehen. Über Notizbuch öffnest du den bisherigen Verlauf. Mit deinem Lesezugriff kannst du die Notizen ansehen, aber keine neuen Einträge ergänzen oder Finanzwerte ändern.",
-  "finances-receipts": "Rechnungen zur Kategorie ablegen. Über Belege öffnest du die Rechnungsliste. Gib eine Bezeichnung ein, wähle die Person unter Bezahlt von und lade eine PDF hoch. Du kannst mehrere Rechnungen je Kategorie hinterlegen. Über den PDF-Button lädst du die Rechnung herunter und kannst sie anschließend auf deinem Gerät öffnen. Hochladen, Anzeigen und Herunterladen sind hier ausschließlich mit Finanz-Schreibrecht möglich. Die Belege verändern keine Einnahmen, Ausgaben oder den Saldo. Über Belege sichern kannst du die Rechnungen der Veranstaltung getrennt als ZIP sichern. In dieser Führung wird nichts hochgeladen oder heruntergeladen.",
+  "finances-receipts": "Belege und Dokumente gibt es ab Pro. Je nach Berechtigung kannst du sie hochladen, anschauen oder bearbeiten.",
   "finances-save": "Kategorie übernehmen. Klicke auf den markierten Button. Erst dann wird die Kategorie wirklich angelegt und du kannst Einnahmen und Ausgaben eintragen.",
   "finances-values": "Einnahmen und Ausgaben eintragen. In jeder Kategorie gibst du Einnahmen und Ausgaben ein. Die Werte werden beim Verlassen des Feldes gespeichert; die Differenz zeigt sofort den aktuellen Stand.",
   "finances-balance": "Den Saldo gemeinsam prüfen. Ganz unten werden Einnahmen und Ausgaben aller Kategorien zusammengefasst. Die Differenz zeigt den aktuellen finanziellen Stand. Rechnungsbelege bleiben davon getrennt.",
@@ -377,7 +377,7 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "preparation-task": "Aufgabe klar formulieren. Beschreibe konkret, was erledigt werden soll. Bereich und Ort helfen, die Aufgabe später schnell wiederzufinden.",
   "preparation-details": "Verantwortung und Frist zuordnen. Wähle bei Bedarf eine verantwortliche Person und einen Termin. Beides kann später jederzeit angepasst werden.",
   "preparation-logbook": "Ersten Stand notieren. Im Logbuch gehören wichtige Hinweise, Absprachen und nächste Schritte. Der Eintrag bleibt nachvollziehbar gespeichert.",
-  "preparation-documents": "Belege und Dokumente zur Aufgabe. Über diesen Button wählst du Dokument oder Beleg. Fotos, PDFs und Word-Dateien sind Dokumente. Für eine Rechnung wählst du Beleg, gibst die Bezeichnung und die Person unter Bezahlt von an und fügst eine PDF hinzu. Bei neuen Aufgaben wird sie erst nach dem Speichern hochgeladen. Später öffnest du die Anhänge über die Büroklammer. Die Zahl zählt alle Dateien. Bereichsleser dürfen Dokumente öffnen und herunterladen. Bei Rechnungen sehen alle die Angaben, öffnen und herunterladen dürfen Bereichsschreiber, Finanzschreiber, Hochladende, Zahlende und Aufgabenverantwortliche. Sonst steht am Schloss: Nur für berechtigte Personen.",
+  "preparation-documents": "Belege und Dokumente gibt es ab Pro. Je nach Berechtigung kannst du sie hochladen, anschauen oder bearbeiten.",
   "preparation-save": "Aufgabe speichern. Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Vorbereitungsaufgabe an.",
   "preparation-complete": "Vorbereitungsaufgabe angelegt! Die Aufgabe steht jetzt in der Vorbereitung. Zuständige, Frist und Logbuch kannst du jederzeit weiterführen.",
 
@@ -388,7 +388,7 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "postprocessing-task": "Aufgabe konkret benennen. Schreibe kurz und eindeutig, was nach dem Event erledigt werden muss – zum Beispiel Rückgabe, Abbau oder Abrechnung.",
   "postprocessing-details": "Verantwortung und Termin setzen. Ordne die Aufgabe bei Bedarf einer Person zu und lege eine Frist fest. Beides darf später angepasst werden.",
   "postprocessing-logbook": "Übergabe und Hinweise dokumentieren. Im Logbuch kommen wichtige Hinweise, Ergebnisse und nächste Schritte. So bleibt der Abschluss nachvollziehbar.",
-  "postprocessing-documents": "Belege und Dokumente zur Nachbereitungsaufgabe. Über diesen Button wählst du Dokument oder Beleg. Fotos, PDFs und Word-Dateien sind Dokumente. Für eine Rechnung wählst du Beleg, gibst die Bezeichnung und die Person unter Bezahlt von an und fügst eine PDF hinzu. Bei neuen Aufgaben wird sie erst nach dem Speichern hochgeladen. Später öffnest du die Anhänge über die Büroklammer. Die Zahl zählt alle Dateien. Bereichsleser dürfen Dokumente öffnen und herunterladen. Bei Rechnungen sehen alle die Angaben, öffnen und herunterladen dürfen Bereichsschreiber, Finanzschreiber, Hochladende, Zahlende und Aufgabenverantwortliche. Sonst steht am Schloss: Nur für berechtigte Personen.",
+  "postprocessing-documents": "Belege und Dokumente gibt es ab Pro. Je nach Berechtigung kannst du sie hochladen, anschauen oder bearbeiten.",
   "postprocessing-save": "Aufgabe speichern. Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Nachbereitungsaufgabe an.",
   "postprocessing-complete": "Nachbereitungsaufgabe angelegt! Die Aufgabe steht jetzt in der Nachbereitung. So bleiben Abbau, Rückgaben und offene Punkte für das Team sichtbar.",
 
@@ -841,8 +841,8 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   ...Object.fromEntries(
     KLEMMI_POSTPROCESSING_AUDIO_IDS.map(id => [id, "20261019-puck-prep-post-v1"])
   ),
-  "preparation-documents": "20261106-task-documents-v1",
-  "postprocessing-documents": "20261106-task-documents-v1",
+  "preparation-documents": "20261106-attachments-pro-short-v2",
+  "postprocessing-documents": "20261106-attachments-pro-short-v2",
   "donations-overview-save":
     "20261020-klemmi-stimme-v2-donations-overview-save-c-v1",
   "donations-overview-summary":
@@ -884,6 +884,7 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   ...Object.fromEntries(
     KLEMMI_FINANCES_AUDIO_IDS.map(id => [id, "20261106-klemmi-v2-finances-v1"])
   ),
+  "finances-receipts": "20261106-attachments-pro-short-v2",
 };
 
 export function isKlemmiAudioId(value: string): value is KlemmiAudioId {

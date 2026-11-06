@@ -521,7 +521,9 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     expect(KLEMMI_FINANCES_AUDIO_IDS).toHaveLength(7);
     for (const id of KLEMMI_FINANCES_AUDIO_IDS) {
       expect(KLEMMI_AUDIO_VOICE_MANIFEST[id].voice).toBe("Klemmi-Stimme");
-      expect(klemmiAudioUrl(id)).toContain("20261106-klemmi-v2-finances-v1");
+      expect(klemmiAudioUrl(id)).toContain(id === "finances-receipts"
+        ? "20261106-attachments-pro-short-v2"
+        : "20261106-klemmi-v2-finances-v1");
     }
     expect(KLEMMI_AUDIO_VOICE_MANIFEST["finances-values"].voice).toBe("Achird");
   });

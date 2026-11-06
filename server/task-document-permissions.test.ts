@@ -1,4 +1,12 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import {
+  productAllowsCapability,
+  type ProductPackageId,
+} from "../shared/product-packages";
+vi.mock("./session-presence", async importOriginal => ({
+  ...(await importOriginal<typeof import("./session-presence")>()),
+  recordSessionPresence: vi.fn(async () => {}),
+}));
 vi.mock("./task-documents", () => ({
   listTaskDocuments: vi.fn(async () => ({
     files: [],
@@ -20,7 +28,11 @@ vi.mock("./task-documents", () => ({
 import { appRouter } from "./routers";
 import * as db from "./db";
 import * as files from "./task-documents";
-function caller(openId = "planning-team-access-71", authenticated = true) {
+function caller(
+  openId = "planning-team-access-71",
+  authenticated = true,
+  role: "user" | "admin" = "user"
+) {
   return appRouter.createCaller({
     req: { headers: { "x-event-year": "2027", "x-event-id": "1" } } as any,
     res: {} as any,
@@ -30,7 +42,7 @@ function caller(openId = "planning-team-access-71", authenticated = true) {
           openId,
           name: "Nicht als ID verwendeter Name",
           email: "test@example.invalid",
-          role: "user",
+          role,
           loginMethod: "password",
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -40,6 +52,7 @@ function caller(openId = "planning-team-access-71", authenticated = true) {
   });
 }
 let access: Record<string, unknown>;
+let packageId: ProductPackageId;
 const upload = {
   area: "prep" as const,
   taskId: 3,
@@ -49,9 +62,38 @@ const upload = {
   fileName: "pokale.pdf",
   base64: "JVBERi0=",
 };
+type TaskDocumentApi = ReturnType<typeof caller>["taskDocuments"];
+const operations: Array<{
+  name: string;
+  run: (api: TaskDocumentApi, area: "prep" | "post") => Promise<unknown>;
+}> = [
+  { name: "list", run: (api, area) => api.list({ area, taskId: 3 }) },
+  { name: "counts", run: (api, area) => api.counts({ area }) },
+  { name: "payers", run: (api, area) => api.payers({ area }) },
+  {
+    name: "uploadReceipt",
+    run: (api, area) => api.upload({ ...upload, area }),
+  },
+  {
+    name: "uploadDocument",
+    run: (api, area) =>
+      api.upload({ ...upload, area, kind: "document", paidByKey: undefined }),
+  },
+  { name: "download", run: (api, area) => api.download({ area, id: 10 }) },
+  { name: "remove", run: (api, area) => api.remove({ area, id: 10 }) },
+];
+const serviceCalls = [
+  files.listTaskDocuments,
+  files.listTaskDocumentCounts,
+  files.listTaskDocumentPayers,
+  files.uploadTaskDocument,
+  files.downloadTaskDocument,
+  files.removeTaskDocument,
+];
 describe("Aufgabendokumente: autorisierte Serverrouten", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    packageId = "enterprise";
     access = {
       id: 71,
       contactId: 17,
@@ -81,18 +123,200 @@ describe("Aufgabendokumente: autorisierte Serverrouten", () => {
       tenantId: "test-verein",
       status: "active",
     } as any);
+    vi.spyOn(db, "resolveTenantForUser").mockResolvedValue({
+      tenantId: "test-verein",
+    } as any);
+    vi.spyOn(
+      db,
+      "isPlanningTeamAccessPasswordChangeRequired"
+    ).mockResolvedValue(false);
+    vi.spyOn(db, "isTenantAdminPasswordChangeRequired").mockResolvedValue(
+      false
+    );
     vi.spyOn(db, "withPlanningWriteLock").mockImplementation(async operation =>
       operation()
     );
     vi.spyOn(db, "recordActivityLog").mockResolvedValue({} as any);
-    vi.spyOn(db, "getCurrentTenantProductEntitlement").mockResolvedValue({
-      packageId: "enterprise",
-      isUsable: true,
-      status: "active",
-    } as any);
+    vi.spyOn(db, "getCurrentTenantProductEntitlement").mockImplementation(
+      async () =>
+        ({
+          packageId,
+          eventId: 1,
+          isUsable: true,
+          status: "active",
+        }) as any
+    );
+    vi.spyOn(db, "currentProductAllowsCapability").mockImplementation(
+      async capability => productAllowsCapability(packageId, capability)
+    );
     vi.spyOn(db, "currentProductAllowsPlanningModule").mockResolvedValue(true);
   });
   afterEach(() => vi.restoreAllMocks());
+  describe.each(["event_pass", "light"] as const)(
+    "%s ohne Dokumentfähigkeit",
+    deniedPackage => {
+      it.each(["prep", "post"] as const)(
+        "sperrt sämtliche %s-Operationen vor Dokumentdiensten, auch für Admins",
+        async area => {
+          packageId = deniedPackage;
+          access.moduleAccess = {
+            preparation: "write",
+            postprocessing: "write",
+            finances: "write",
+          };
+          for (const identity of [
+            "personal",
+            "shared",
+            "delegated",
+            "admin",
+          ] as const) {
+            access.contactId = identity === "shared" ? null : 17;
+            access.isTenantAdmin = identity === "delegated";
+            const api =
+              identity === "admin"
+                ? caller("tenant-admin:fixture", true, "admin").taskDocuments
+                : caller().taskDocuments;
+            for (const operation of operations) {
+              await expect(
+                operation.run(api, area),
+                `${identity}: ${operation.name}`
+              ).rejects.toMatchObject({ code: "FORBIDDEN" });
+            }
+          }
+          expect(db.currentProductAllowsCapability).toHaveBeenCalledWith(
+            "document_attachments"
+          );
+          expect(db.currentProductAllowsPlanningModule).not.toHaveBeenCalled();
+          expect(db.getContact).not.toHaveBeenCalled();
+          for (const service of serviceCalls)
+            expect(service).not.toHaveBeenCalled();
+        }
+      );
+    }
+  );
+  describe.each(["pro", "enterprise"] as const)(
+    "%s mit Dokumentfähigkeit",
+    allowedPackage => {
+      it.each(["prep", "post"] as const)(
+        "lässt sämtliche %s-Operationen durch und behält individuelle Actorrechte",
+        async area => {
+          packageId = allowedPackage;
+          for (const rights of [
+            {
+              task: "read",
+              finances: "off",
+              taskWrite: false,
+              financeWrite: false,
+            },
+            {
+              task: "write",
+              finances: "read",
+              taskWrite: true,
+              financeWrite: false,
+            },
+            {
+              task: "read",
+              finances: "write",
+              taskWrite: false,
+              financeWrite: true,
+            },
+          ] as const) {
+            access.moduleAccess = {
+              preparation: rights.task,
+              postprocessing: rights.task,
+              finances: rights.finances,
+            };
+            for (const operation of operations)
+              await operation.run(caller().taskDocuments, area);
+            const actor = expect.objectContaining({
+              userId: 701,
+              personalAccount: true,
+              ownContactIds: new Set([17]),
+              taskWrite: rights.taskWrite,
+              financeWrite: rights.financeWrite,
+            });
+            expect(files.listTaskDocuments).toHaveBeenLastCalledWith(
+              area,
+              3,
+              actor
+            );
+            expect(files.uploadTaskDocument).toHaveBeenLastCalledWith(
+              expect.objectContaining({ area, kind: "document" }),
+              actor
+            );
+            expect(files.downloadTaskDocument).toHaveBeenLastCalledWith(
+              area,
+              10,
+              actor
+            );
+            expect(files.removeTaskDocument).toHaveBeenLastCalledWith(
+              area,
+              10,
+              actor
+            );
+            expect(files.listTaskDocumentCounts).toHaveBeenLastCalledWith(area);
+            expect(files.listTaskDocumentPayers).toHaveBeenCalled();
+          }
+          expect(db.currentProductAllowsCapability).toHaveBeenCalledWith(
+            "document_attachments"
+          );
+        }
+      );
+      it("ersetzt keine persönliche Modulfreigabe durch die Paketfähigkeit", async () => {
+        packageId = allowedPackage;
+        access.moduleAccess = {
+          preparation: "off",
+          postprocessing: "off",
+          finances: "write",
+        };
+        for (const area of ["prep", "post"] as const) {
+          for (const operation of operations) {
+            await expect(
+              operation.run(caller().taskDocuments, area)
+            ).rejects.toMatchObject({ code: "FORBIDDEN" });
+          }
+        }
+        for (const service of serviceCalls)
+          expect(service).not.toHaveBeenCalled();
+      });
+      it("hält öffentliche Demoidentitäten trotz Paket- und Adminrechten gesperrt", async () => {
+        packageId = allowedPackage;
+        const api = caller(
+          "tenant-admin:demo-session-fixture",
+          true,
+          "admin"
+        ).taskDocuments;
+        for (const area of ["prep", "post"] as const) {
+          for (const operation of operations) {
+            await expect(operation.run(api, area)).rejects.toMatchObject({
+              code: "FORBIDDEN",
+              message: expect.stringContaining("Vereinsdemo"),
+            });
+          }
+        }
+        for (const service of serviceCalls)
+          expect(service).not.toHaveBeenCalled();
+      });
+    }
+  );
+  it("macht bestehende Dateien nach Downgrade unzugänglich und nach Pro-Rückkehr wieder zugänglich, ohne sie zu löschen", async () => {
+    const api = caller().taskDocuments;
+    packageId = "pro";
+    const original = await api.download({ area: "prep", id: 10 });
+    packageId = "light";
+    for (const operation of operations) {
+      await expect(operation.run(api, "prep")).rejects.toMatchObject({
+        code: "FORBIDDEN",
+      });
+    }
+    expect(files.downloadTaskDocument).toHaveBeenCalledTimes(1);
+    expect(files.removeTaskDocument).not.toHaveBeenCalled();
+    packageId = "pro";
+    await expect(api.download({ area: "prep", id: 10 })).resolves.toEqual(
+      original
+    );
+    expect(files.downloadTaskDocument).toHaveBeenCalledTimes(2);
+  });
   it("Aufgaben-Leser können Rechnungen einreichen; die individuelle Lesefreigabe bleibt beim Dokumentdienst", async () => {
     await caller().taskDocuments.upload(upload);
     expect(files.uploadTaskDocument).toHaveBeenCalledWith(

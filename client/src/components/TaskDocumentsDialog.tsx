@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
+import { productAllowsCapability } from "@shared/product-packages";
 import { Download, Eye, Lock, Paperclip, Trash2, Upload } from "lucide-react";
 import {
   useEffect,
@@ -208,8 +209,10 @@ export function createTaskDocumentDraftQueue(area: TaskDocumentArea) {
     flush: async (
       taskId: number,
       upload: (input: UploadInput) => Promise<unknown>,
-      encode: typeof taskDocumentBase64 = taskDocumentBase64
+      encode: typeof taskDocumentBase64 = taskDocumentBase64,
+      canUpload: () => boolean = () => true
     ): Promise<boolean> => {
+      if (!canUpload()) return false;
       if (!Number.isSafeInteger(taskId) || taskId <= 0)
         throw new Error(
           "Dateien können erst nach erfolgreicher Aufgabenanlage hochgeladen werden."
@@ -219,6 +222,7 @@ export function createTaskDocumentDraftQueue(area: TaskDocumentArea) {
       publish(snapshot.drafts, true);
       try {
         for (const draft of pending) {
+          if (!canUpload()) return false;
           publish(
             snapshot.drafts.map(row =>
               row.localId === draft.localId
@@ -228,6 +232,7 @@ export function createTaskDocumentDraftQueue(area: TaskDocumentArea) {
           );
           try {
             const base64 = await encode(draft.file, draft.kind);
+            if (!canUpload()) return false;
             await upload({
               area,
               taskId,
@@ -255,13 +260,25 @@ export function createTaskDocumentDraftQueue(area: TaskDocumentArea) {
         }
         return snapshot.drafts.length === 0;
       } finally {
-        publish(snapshot.drafts, false);
+        publish(snapshot.drafts.map(draft =>
+          draft.status === "uploading" ? { ...draft, status: "pending" } : draft
+        ), false);
       }
     },
   };
 }
 
 export function useTaskDocumentDrafts(area: TaskDocumentArea) {
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery();
+  const allowsDocuments = productAllowsCapability(
+    tenantProduct?.packageId ?? "event_pass", "document_attachments"
+  );
+  const access = useRef(allowsDocuments);
+  access.current = allowsDocuments;
+  useEffect(() => {
+    access.current = allowsDocuments;
+    return () => { access.current = false; };
+  }, [allowsDocuments]);
   const [queue] = useState(() => createTaskDocumentDraftQueue(area));
   const snapshot = useSyncExternalStore(
     queue.subscribe,
@@ -272,15 +289,20 @@ export function useTaskDocumentDrafts(area: TaskDocumentArea) {
   const utils = trpc.useUtils();
   return {
     ...snapshot,
-    stage: queue.stage,
+    stage: (draft: Parameters<typeof queue.stage>[0]) => {
+      if (access.current) queue.stage(draft);
+    },
     discard: queue.discard,
     clear: queue.clear,
     flush: async (taskId: number) => {
+      if (!access.current) return false;
       let uploaded = false;
       const success = await queue.flush(taskId, async input => {
+        if (!access.current) throw new Error("Belege und Dokumente gibt es ab Pro.");
         await upload.mutateAsync(input);
         uploaded = true;
-      });
+      }, taskDocumentBase64, () => access.current);
+      if (!access.current) return success;
       // A refresh failure must not turn a confirmed upload into a retry/duplicate.
       void utils.taskDocuments.list
         .invalidate({ area, taskId })
@@ -368,6 +390,7 @@ export function createTaskDocumentFileViewer() {
 export function TaskDocumentsButton({
   onClick,
   disabled = false,
+  locked = false,
   taskTitle,
   compact = false,
   count,
@@ -375,34 +398,37 @@ export function TaskDocumentsButton({
 }: {
   onClick: () => void;
   disabled?: boolean;
+  locked?: boolean;
   taskTitle?: string;
   compact?: boolean;
   count?: number;
   /** Ausschließlich Ankerpunkt für die Klemmi-Führung. */
   guideTarget?: string;
 }) {
-  const hasCount = typeof count === "number" && count > 0;
-  const label = taskTitle
+  const hasCount = !locked && typeof count === "number" && count > 0;
+  const label = locked ? "Belege / Dokumente – ab Pro" : taskTitle
     ? `Belege / Dokumente zu ${taskTitle}`
     : "Belege / Dokumente";
+  const Icon = locked ? Lock : Paperclip;
   return (
     <Button
       type="button"
       variant="outline"
       size={compact ? "icon" : "default"}
       className={
-        compact
-          ? "relative h-11 w-11 shrink-0 border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
-          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+        `${compact ? "relative h-11 w-11 shrink-0 " : ""}${locked
+          ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 hover:bg-slate-100 hover:text-slate-400"
+          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"}`
       }
       disabled={disabled}
-      onClick={onClick}
+      aria-disabled={locked || disabled}
+      onClick={() => { if (!locked && !disabled) onClick(); }}
       data-klemmi-target={guideTarget}
-      title="Belege / Dokumente"
+      title={locked ? "Belege / Dokumente – ab Pro" : "Belege / Dokumente"}
       aria-label={`${label}${hasCount ? ` (${count} ${count === 1 ? "Datei" : "Dateien"})` : ""}`}
     >
-      <Paperclip className={compact ? "h-4 w-4" : "mr-2 h-4 w-4"} />
-      {!compact && "Belege / Dokumente"}
+      <Icon className={compact ? "h-4 w-4" : "mr-2 h-4 w-4"} />
+      {!compact && (locked ? "Belege / Dokumente – ab Pro" : "Belege / Dokumente")}
       {compact && hasCount && (
         <span
           aria-hidden="true"
@@ -431,19 +457,27 @@ export function TaskDocumentsDialog({
   drafts: TaskDocumentDraftController;
   onClose: () => void;
 }) {
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery();
+  const allowsDocuments = productAllowsCapability(
+    tenantProduct?.packageId ?? "event_pass", "document_attachments"
+  );
+  const access = useRef(allowsDocuments);
+  access.current = allowsDocuments;
   const persisted = Number.isSafeInteger(taskId) && Number(taskId) > 0;
   const input = useMemo(() => ({ area, taskId: taskId ?? 0 }), [area, taskId]);
   const payerInput = useMemo(() => ({ area }), [area]);
   const list = trpc.taskDocuments.list.useQuery(input, {
-    enabled: persisted,
+    enabled: allowsDocuments && persisted,
     retry: false,
   });
   const payers = trpc.taskDocuments.payers.useQuery(payerInput, {
+    enabled: allowsDocuments,
     retry: false,
   });
   const utils = trpc.useUtils();
   const remove = trpc.taskDocuments.remove.useMutation({
     onSuccess: () => {
+      if (!access.current) return;
       void utils.taskDocuments.counts
         .invalidate({ area })
         .catch(() => undefined);
@@ -459,8 +493,11 @@ export function TaskDocumentsDialog({
   const requestInFlight = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const viewer = useMemo(() => createTaskDocumentFileViewer(), []);
-  useEffect(() => () => viewer.dispose(), [viewer]);
-  const response: TaskDocumentList | undefined = !list.error
+  useEffect(() => {
+    access.current = allowsDocuments;
+    return () => { access.current = false; viewer.dispose(); };
+  }, [allowsDocuments, viewer]);
+  const response: TaskDocumentList | undefined = allowsDocuments && !list.error
     ? list.data
     : undefined;
   const canUploadDocuments = persisted
@@ -481,7 +518,7 @@ export function TaskDocumentsDialog({
   const busy = Boolean(action) || drafts.busy;
 
   const run = async (label: string, operation: () => Promise<void>) => {
-    if (requestInFlight.current || drafts.busy) return;
+    if (!access.current || requestInFlight.current || drafts.busy) return;
     requestInFlight.current = true;
     setAction(label);
     setError(null);
@@ -495,7 +532,7 @@ export function TaskDocumentsDialog({
     }
   };
   const submit = () => {
-    if (!canUpload || requestInFlight.current || drafts.busy) return;
+    if (!access.current || !canUpload || requestInFlight.current || drafts.busy) return;
     const validation = taskDocumentFormError(
       effectiveKind,
       title,
@@ -511,6 +548,7 @@ export function TaskDocumentsDialog({
       const selected = file!;
       // Validate bytes while still local; malformed files never enter the queue.
       await taskDocumentBase64(selected, effectiveKind);
+      if (!access.current) return;
       drafts.stage({
         kind: effectiveKind,
         title: title.trim(),
@@ -531,7 +569,7 @@ export function TaskDocumentsDialog({
     });
   };
   const openFile = (row: TaskDocumentFile, mode: "preview" | "download") => {
-    if (row.canOpen !== true || requestInFlight.current || drafts.busy) return;
+    if (!access.current || row.canOpen !== true || requestInFlight.current || drafts.busy) return;
     // Reserve the tab within the user gesture, before awaiting the tRPC response.
     const preview =
       mode === "preview" ? window.open("about:blank", "_blank") : null;
@@ -548,6 +586,7 @@ export function TaskDocumentsDialog({
           area,
           id: row.id,
         });
+        if (!access.current) { preview?.close(); return; }
         viewer.show(result, mode, preview);
       } catch (cause) {
         preview?.close();
@@ -562,6 +601,7 @@ export function TaskDocumentsDialog({
     if (fileInput.current) fileInput.current.value = "";
   };
 
+  if (!allowsDocuments) return null;
   return (
     <Dialog
       open
@@ -709,7 +749,7 @@ export function TaskDocumentsDialog({
                           void run(`remove:${row.id}`, async () => {
                             await remove.mutateAsync({ area, id: row.id });
                             setDeleteId(null);
-                            await list.refetch();
+                            if (access.current) await list.refetch();
                           });
                         }}
                       >

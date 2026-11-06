@@ -34,7 +34,8 @@ import {
   STICKY_TABLE_HEADER_CELL_CLASS,
 } from "@/lib/sticky-table";
 import { trpc } from "@/lib/trpc";
-import { BookOpen, FileText, Pencil, Plus, Trash2 } from "lucide-react";
+import { productAllowsCapability } from "@shared/product-packages";
+import { BookOpen, FileText, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -57,6 +58,10 @@ export default function Finances() {
   const canRead = canReadModule("finances");
   const canWrite = canWriteModule("finances");
   const canDelete = isTenantAdmin && canWrite;
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery();
+  const allowsDocuments = productAllowsCapability(
+    tenantProduct?.packageId ?? "event_pass", "document_attachments"
+  );
   const rightsLoading =
     authLoading ||
     (!canRead && (moduleAccess.isLoading || administrativeContext.isLoading));
@@ -87,6 +92,10 @@ export default function Finances() {
     setDeleteTarget(null);
     setDeleteError(null);
   }, [year, eventId]);
+
+  useEffect(() => {
+    if (!allowsDocuments || !canWrite) setReceiptsId(null);
+  }, [allowsDocuments, canWrite]);
 
   const deleteCategory = async () => {
     if (!canDelete || !deleteTarget || deletionInFlight.current) return;
@@ -155,7 +164,7 @@ export default function Finances() {
           ? '[data-klemmi-target="finances-receipts"]'
           : '[data-klemmi-target="finances-values"]',
       eyebrow: "Getrennte Rechnungsbelege",
-      title: "Rechnungen zur Kategorie ablegen",
+      title: "Belege und Dokumente – ab Pro",
       text: KLEMMI_AUDIO_SCRIPTS["finances-receipts"],
       action: "Saldo zeigen",
     },
@@ -199,13 +208,15 @@ export default function Finances() {
             type="button"
             variant="outline"
             size="sm"
-            className="max-md:min-h-11"
+            className={`max-md:min-h-11 ${!allowsDocuments ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 hover:bg-slate-100 hover:text-slate-400" : ""}`}
             data-klemmi-target="finances-receipts"
-            onClick={() => setReceiptsId(row.id)}
-            aria-label={`Belege für ${row.category} öffnen`}
+            aria-disabled={!allowsDocuments}
+            title={!allowsDocuments ? "Belege / Dokumente – ab Pro" : "Belege"}
+            onClick={() => { if (allowsDocuments && canWrite) setReceiptsId(row.id); }}
+            aria-label={!allowsDocuments ? "Belege / Dokumente – ab Pro" : `Belege für ${row.category} öffnen`}
           >
-            <FileText className="mr-1.5 h-4 w-4" />
-            Belege
+            {allowsDocuments ? <FileText className="mr-1.5 h-4 w-4" /> : <Lock className="mr-1.5 h-4 w-4" />}
+            {allowsDocuments ? "Belege" : "Belege / Dokumente – ab Pro"}
           </Button>
         </>
       )}
@@ -296,7 +307,7 @@ export default function Finances() {
         </div>
       </div>
 
-      {canWrite && (
+      {canWrite && allowsDocuments && (
         <div className="space-y-2 rounded-md border bg-muted/20 p-3">
           <FinanceReceiptBackupButton canWrite={canWrite} />
           <p className="text-xs leading-5 text-muted-foreground">
@@ -500,7 +511,7 @@ export default function Finances() {
           onClose={() => setNotebookId(null)}
         />
       )}
-      {canWrite && receiptsRow && (
+      {canWrite && allowsDocuments && receiptsRow && (
         <FinanceReceiptsDialog
           key={`${eventId}-${year}-${receiptsRow.id}`}
           row={receiptsRow}

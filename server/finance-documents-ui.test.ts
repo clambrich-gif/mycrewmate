@@ -7,6 +7,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
   canRead: true,
   canWrite: false,
+  packageId: "pro",
+  buttons: new Map<string, () => void>(),
+  capturePageState: false,
+  pageState: [] as unknown[],
+  pageStateIndex: 0,
   receiptsQuery: vi.fn(),
   payersQuery: vi.fn(),
   mutate: vi.fn(),
@@ -20,6 +25,34 @@ const state = vi.hoisted(() => ({
     },
   ],
 }));
+
+vi.mock("react", async importOriginal => {
+  const actual = await importOriginal<typeof import("react")>();
+  return {
+    ...actual,
+    useState: (initial: unknown) => {
+      if (!state.capturePageState) return actual.useState(initial);
+      const index = state.pageStateIndex++;
+      if (!(index in state.pageState))
+        state.pageState[index] = typeof initial === "function" ? initial() : initial;
+      return [state.pageState[index], (next: any) => {
+        state.pageState[index] = typeof next === "function" ? next(state.pageState[index]) : next;
+      }];
+    },
+  };
+});
+vi.mock("@/components/ui/button", async importOriginal => {
+  const actual = await importOriginal<typeof import("@/components/ui/button")>();
+  const { createElement } = await import("react");
+  return {
+    ...actual,
+    Button: (props: React.ComponentProps<typeof actual.Button>) => {
+      if (props["aria-label"] && props.onClick)
+        state.buttons.set(props["aria-label"], () => props.onClick!({} as any));
+      return createElement(actual.Button, props);
+    },
+  };
+});
 
 vi.mock("@/_core/hooks/useAuth", () => ({
   useAuth: () => ({ loading: false }),
@@ -73,6 +106,9 @@ vi.mock("@/lib/trpc", () => {
         },
         dashboard: { invalidate: vi.fn() },
       }),
+      tenantProduct: {
+        current: { useQuery: () => ({ data: { packageId: state.packageId } }) },
+      },
       finances: {
         list: {
           useQuery: () => ({
@@ -123,6 +159,7 @@ import {
 } from "../client/src/components/FinanceCategoryDialog";
 import { FinanceNotebookDialog } from "../client/src/components/FinanceNotebookDialog";
 import {
+  FinanceReceiptBackupButton,
   FinanceReceiptsDialog,
   FINANCE_RECEIPT_BACKUP_HINT,
   MAX_FINANCE_PDF_BYTES,
@@ -134,6 +171,11 @@ beforeEach(() => {
   vi.clearAllMocks();
   state.canRead = true;
   state.canWrite = false;
+  state.packageId = "pro";
+  state.buttons.clear();
+  state.capturePageState = false;
+  state.pageState = [];
+  state.pageStateIndex = 0;
   // Supports both classic and automatic JSX transforms in this node-only test.
   vi.stubGlobal("React", React);
 });
@@ -149,7 +191,88 @@ const pageSource = () =>
     "utf8"
   );
 
+function renderFinancePage() {
+  state.pageStateIndex = 0;
+  const Capture = () => {
+    state.capturePageState = true;
+    try { return Finances(); }
+    finally { state.capturePageState = false; }
+  };
+  return renderToStaticMarkup(createElement(Capture));
+}
+
 describe("finance documents UI (synthetic fixtures only)", () => {
+  for (const packageId of ["event_pass", "light", "pro", "enterprise"]) {
+    it.each([false, true])(
+      `keeps finance core rights but gates receipt buttons, dialogs, payers and ZIP (${packageId}, writer=%s)`,
+      canWrite => {
+        state.packageId = packageId;
+        state.canWrite = canWrite;
+        const enabled = packageId === "pro" || packageId === "enterprise";
+        const html = renderFinancePage();
+        expect(html).toContain("Testkategorie");
+        expect(html).toContain("Notizbuch");
+        expect(html).toContain("33,00");
+        expect(html.includes("Neue Kategorie")).toBe(canWrite);
+        expect(html.includes("Bearbeiten")).toBe(canWrite);
+        expect(html.includes("Belege sichern (ZIP)")).toBe(enabled && canWrite);
+        expect(state.receiptsQuery).not.toHaveBeenCalled();
+        expect(state.payersQuery).not.toHaveBeenCalled();
+        if (canWrite) {
+          const label = enabled ? "Belege für Testkategorie öffnen" : "Belege / Dokumente – ab Pro";
+          state.buttons.get(label)!();
+          const afterClick = renderFinancePage();
+          if (enabled) {
+            expect(afterClick).toContain("Vorhandene Belege");
+            expect(state.receiptsQuery).toHaveBeenCalledWith({ financeId: 42 }, { enabled: true, retry: false });
+            expect(state.payersQuery).toHaveBeenCalledWith(undefined, { enabled: true, retry: false });
+          } else {
+            expect(html).toContain('aria-disabled="true"');
+            expect(html).toContain('title="Belege / Dokumente – ab Pro"');
+            expect(html).toContain("bg-slate-100 text-slate-400");
+            expect(afterClick).not.toContain("Vorhandene Belege");
+            expect(state.receiptsQuery).not.toHaveBeenCalled();
+            expect(state.payersQuery).not.toHaveBeenCalled();
+          }
+        } else {
+          expect(html).not.toContain("Belege");
+        }
+        expect(state.mutate).not.toHaveBeenCalled();
+      }
+    );
+  }
+
+  it.each(["event_pass", "light"])(
+    "refuses direct receipt and ZIP mounts even with finance write rights (%s)",
+    packageId => {
+      state.packageId = packageId;
+      const html = renderToStaticMarkup(createElement(FinanceReceiptsDialog, {
+        row: state.rows[0], canWrite: true, onClose: vi.fn(),
+      }));
+      expect(html).toBe("");
+      expect(state.receiptsQuery).toHaveBeenCalledWith({ financeId: 42 }, { enabled: false, retry: false });
+      expect(state.payersQuery).toHaveBeenCalledWith(undefined, { enabled: false, retry: false });
+      expect(renderToStaticMarkup(createElement(FinanceReceiptBackupButton, { canWrite: true }))).toBe("");
+      expect(state.mutate).not.toHaveBeenCalled();
+    }
+  );
+
+  it("unmounts an already opened receipt dialog immediately on downgrade without deleting files", () => {
+    state.canWrite = true;
+    renderFinancePage();
+    state.buttons.get("Belege für Testkategorie öffnen")!();
+    expect(renderFinancePage()).toContain("Vorhandene Belege");
+    vi.clearAllMocks();
+    state.packageId = "light";
+    const html = renderFinancePage();
+    expect(html).not.toContain("Vorhandene Belege");
+    expect(html).not.toContain("Belege sichern (ZIP)");
+    expect(html).toContain("Belege / Dokumente – ab Pro");
+    expect(state.receiptsQuery).not.toHaveBeenCalled();
+    expect(state.payersQuery).not.toHaveBeenCalled();
+    expect(state.mutate).not.toHaveBeenCalled();
+  });
+
   it("read-only finance users see values and notebooks, but no receipt controls or metadata queries", () => {
     const html = renderToStaticMarkup(createElement(Finances));
     expect(html).toContain("Testkategorie");

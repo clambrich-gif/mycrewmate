@@ -26,7 +26,7 @@ const state = vi.hoisted(() => ({
   pageStateIndex: 0,
   guide: null as any,
   rows: null as any[] | null,
-  packageId: "event_pass",
+  packageId: "pro",
   createTask: vi.fn(),
   mutateTask: vi.fn(),
   data: {
@@ -199,8 +199,8 @@ vi.mock("@/lib/trpc", () => {
           },
         },
         counts: {
-          useQuery: (input: unknown) => {
-            state.countsQuery(input);
+          useQuery: (input: unknown, options: unknown) => {
+            state.countsQuery(input, options);
             return { data: state.counts };
           },
         },
@@ -286,7 +286,7 @@ beforeEach(() => {
   state.pageStateIndex = 0;
   state.guide = null;
   state.rows = null;
-  state.packageId = "event_pass";
+  state.packageId = "pro";
   state.createTask.mockResolvedValue({ id: 74 });
   state.counts = [{ taskId: 41, count: 3 }];
   state.data = {
@@ -363,11 +363,86 @@ describe("task document UI — synthetic mocks only", () => {
         html.match(/aria-hidden="true" class="absolute -right-1 -top-1/g) ?? []
       ).toHaveLength(2);
       expect(state.countsQuery).toHaveBeenCalledOnce();
-      expect(state.countsQuery).toHaveBeenCalledWith({ area });
+      expect(state.countsQuery).toHaveBeenCalledWith({ area }, { enabled: true, retry: false });
       expect(state.listQuery).not.toHaveBeenCalled();
       expect(state.payerQuery).not.toHaveBeenCalled();
       expect(state.upload).not.toHaveBeenCalled();
       expect(state.download).not.toHaveBeenCalled();
+    }
+  );
+
+  for (const packageId of ["event_pass", "light", "pro", "enterprise"]) {
+    for (const canWrite of [false, true]) {
+      it.each([["prep", Preparation], ["post", PostProcessing]] as const)(
+        `gates row/card counts and clicks without changing core task actions (%s, ${packageId}, ${canWrite ? "writer" : "reader"})`,
+        (area, Page) => {
+          state.packageId = packageId;
+          state.canWrite = canWrite;
+          const enabled = packageId === "pro" || packageId === "enterprise";
+          const html = renderGuidePage(Page);
+          expect(html).toContain("Synthetische Aufgabe");
+          expect(html).toContain('aria-label="Aufgabe Synthetische Aufgabe bearbeiten"');
+          expect(state.countsQuery).toHaveBeenCalledWith({ area }, { enabled, retry: false });
+          expect(html.includes("(3 Dateien)")).toBe(enabled);
+          expect(html.includes('class="absolute -right-1 -top-1')).toBe(enabled);
+          const label = enabled
+            ? "Belege / Dokumente zu Synthetische Aufgabe (3 Dateien)"
+            : "Belege / Dokumente – ab Pro";
+          state.buttons.get(label)!();
+          const afterClick = renderGuidePage(Page);
+          if (enabled) {
+            expect(afterClick).toContain("Vorhandene Dateien");
+            expect(state.listQuery).toHaveBeenCalledWith({ area, taskId: 41 }, { enabled: true, retry: false });
+            expect(state.payerQuery).toHaveBeenCalledWith({ area }, { enabled: true, retry: false });
+          } else {
+            expect(html).toContain('aria-disabled="true"');
+            expect(html).toContain('title="Belege / Dokumente – ab Pro"');
+            expect(html).toContain("bg-slate-100 text-slate-400");
+            expect(afterClick).not.toContain("Vorhandene Dateien");
+            expect(state.listQuery).not.toHaveBeenCalled();
+            expect(state.payerQuery).not.toHaveBeenCalled();
+          }
+          expect(state.upload).not.toHaveBeenCalled();
+          expect(state.download).not.toHaveBeenCalled();
+          expect(state.remove).not.toHaveBeenCalled();
+        }
+      );
+    }
+  }
+
+  it.each(["event_pass", "light"])(
+    "ignores cached files, counts, draft data and direct dialog mounts below Pro (%s)",
+    packageId => {
+      state.packageId = packageId;
+      state.canWrite = true;
+      state.data.files = [row({ title: "Bereits gespeicherte Datei", canDelete: true })];
+      const drafts = controller({ drafts: [{ localId: "local:1", kind: "document", title: "Lokaler Entwurf", file: fixtureFile(), status: "pending" }] });
+      expect(renderDialog({ drafts })).toBe("");
+      expect(state.listQuery).toHaveBeenCalledWith({ area: "prep", taskId: 41 }, { enabled: false, retry: false });
+      expect(state.payerQuery).toHaveBeenCalledWith({ area: "prep" }, { enabled: false, retry: false });
+      expect(state.upload).not.toHaveBeenCalled();
+      expect(state.remove).not.toHaveBeenCalled();
+      expect(state.data.files).toHaveLength(1);
+      expect(drafts.clear).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([["prep", Preparation], ["post", PostProcessing]] as const)(
+    "unmounts open document dialogs and ignores retained counts immediately on downgrade (%s)",
+    (area, Page) => {
+      renderGuidePage(Page);
+      state.buttons.get("Belege / Dokumente zu Synthetische Aufgabe (3 Dateien)")!();
+      expect(renderGuidePage(Page)).toContain("Vorhandene Dateien");
+      vi.clearAllMocks();
+      state.packageId = "light";
+      const html = renderGuidePage(Page);
+      expect(html).not.toContain("Vorhandene Dateien");
+      expect(html).not.toContain("(3 Dateien)");
+      expect(state.countsQuery).toHaveBeenCalledWith({ area }, { enabled: false, retry: false });
+      expect(state.listQuery).not.toHaveBeenCalled();
+      expect(state.payerQuery).not.toHaveBeenCalled();
+      expect(state.remove).not.toHaveBeenCalled();
+      expect(state.upload).not.toHaveBeenCalled();
     }
   );
 
@@ -543,7 +618,7 @@ describe("task document UI — synthetic mocks only", () => {
     );
     expect(state.payerQuery).toHaveBeenCalledWith(
       { area: "prep" },
-      { retry: false }
+      { enabled: true, retry: false }
     );
     for (const text of [
       "ZIP",
@@ -698,6 +773,66 @@ describe("local drafts and upload lifecycle", () => {
     return drafts;
   };
 
+  it.each(["event_pass", "light"])(
+    "refuses draft staging and flush without any upload/cache operation (%s)",
+    async packageId => {
+      state.packageId = packageId;
+      const drafts = hookController("prep");
+      drafts.stage({ kind: "document", title: "Gesperrt", file: fixtureFile() });
+      expect(await drafts.flush(41)).toBe(false);
+      expect(state.upload).not.toHaveBeenCalled();
+      expect(state.invalidate).not.toHaveBeenCalled();
+      expect(state.invalidateCounts).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(["event_pass", "light"])(
+    "does not flush already queued Pro files after downgrade (%s)",
+    async packageId => {
+      let drafts!: TaskDocumentDraftController;
+      const Capture = () => {
+        state.capturePageState = true;
+        try { drafts = useTaskDocumentDrafts("prep"); }
+        finally { state.capturePageState = false; }
+        return null;
+      };
+      renderToStaticMarkup(createElement(Capture));
+      drafts.stage({ kind: "document", title: "Vor Downgrade lokal", file: fixtureFile() });
+      state.packageId = packageId;
+      state.pageStateIndex = 0;
+      renderToStaticMarkup(createElement(Capture));
+      expect(drafts.drafts).toHaveLength(1);
+      expect(await drafts.flush(41)).toBe(false);
+      expect(drafts.drafts).toHaveLength(1);
+      expect(state.upload).not.toHaveBeenCalled();
+      expect(state.invalidate).not.toHaveBeenCalled();
+      expect(state.invalidateCounts).not.toHaveBeenCalled();
+    }
+  );
+
+  it("stops pending uploads if the package gate closes while file bytes are being read, without deleting drafts", async () => {
+    const queue = createTaskDocumentDraftQueue("prep");
+    queue.stage({ kind: "document", title: "Bleibt erhalten", file: fixtureFile() });
+    let enabled = true;
+    const encode = vi.fn(async () => { enabled = false; return "base64"; });
+    expect(await queue.flush(41, state.upload, encode, () => enabled)).toBe(false);
+    expect(state.upload).not.toHaveBeenCalled();
+    expect(queue.getSnapshot().drafts).toHaveLength(1);
+    expect(queue.getSnapshot().drafts[0].status).toBe("pending");
+    expect(queue.getSnapshot().busy).toBe(false);
+  });
+
+  it("stops a batch after an in-flight success when package access is withdrawn", async () => {
+    const queue = createTaskDocumentDraftQueue("post");
+    for (const title of ["Schon bestätigt", "Noch lokal"])
+      queue.stage({ kind: "document", title, file: fixtureFile() });
+    let enabled = true;
+    const upload = vi.fn(async () => { enabled = false; return { id: 9 }; });
+    expect(await queue.flush(41, upload, vi.fn().mockResolvedValue("base64"), () => enabled)).toBe(false);
+    expect(upload).toHaveBeenCalledOnce();
+    expect(queue.getSnapshot().drafts.map(draft => draft.title)).toEqual(["Noch lokal"]);
+  });
+
   it.each(["prep", "post"] as const)(
     "invalidates counts and the existing list after confirmed uploads (%s)",
     async area => {
@@ -775,7 +910,7 @@ describe("local drafts and upload lifecycle", () => {
       expect(state.invalidateCounts).toHaveBeenCalledWith({ area });
       const text = source("client/src/components/TaskDocumentsDialog.tsx");
       expect(text).toMatch(
-        /await remove\.mutateAsync\(\{ area, id: row\.id \}\);\s*setDeleteId\(null\);\s*await list\.refetch\(\);/
+        /await remove\.mutateAsync\(\{ area, id: row\.id \}\);\s*setDeleteId\(null\);\s*if \(access\.current\) await list\.refetch\(\);/
       );
     }
   );
@@ -1163,10 +1298,12 @@ describe("Blob preview/download resource cleanup", () => {
   });
 });
 
-const DOCUMENT_GUIDE_BODY = "Über diesen Button wählst du Dokument oder Beleg. Fotos, PDFs und Word-Dateien sind Dokumente. Für eine Rechnung wählst du Beleg, gibst die Bezeichnung und die Person unter Bezahlt von an und fügst eine PDF hinzu. Bei neuen Aufgaben wird sie erst nach dem Speichern hochgeladen. Später öffnest du die Anhänge über die Büroklammer. Die Zahl zählt alle Dateien. Bereichsleser dürfen Dokumente öffnen und herunterladen. Bei Rechnungen sehen alle die Angaben, öffnen und herunterladen dürfen Bereichsschreiber, Finanzschreiber, Hochladende, Zahlende und Aufgabenverantwortliche. Sonst steht am Schloss: Nur für berechtigte Personen.";
+const DOCUMENT_GUIDE_TITLE = "Belege und Dokumente gibt es ab Pro";
+const DOCUMENT_GUIDE_BODY = "Je nach Berechtigung kannst du sie hochladen, anschauen oder bearbeiten.";
+const DOCUMENT_GUIDE_SCRIPT = `${DOCUMENT_GUIDE_TITLE}. ${DOCUMENT_GUIDE_BODY}`;
 const GUIDE_PAGES = [
-  ["preparation", Preparation, "prep", "Belege und Dokumente zur Aufgabe"],
-  ["postprocessing", PostProcessing, "post", "Belege und Dokumente zur Nachbereitungsaufgabe"],
+  ["preparation", Preparation, "prep", DOCUMENT_GUIDE_TITLE],
+  ["postprocessing", PostProcessing, "post", DOCUMENT_GUIDE_TITLE],
 ] as const;
 
 // Invoke the real page inside a React render, retaining only its state. This
@@ -1193,7 +1330,7 @@ function expectNoDocumentSideEffects() {
 
 describe("Klemmi task documents — exact scripts and real tour anchors", () => {
   it.each(GUIDE_PAGES)(
-    "%s uses the exact full script, existing voice category and new isolated cache revision",
+    "%s uses the exact short shared script, existing voice category and new isolated cache revision",
     (guideId, _Page, area, title) => {
       const id = `${guideId}-documents` as "preparation-documents" | "postprocessing-documents";
       const ids = area === "prep" ? KLEMMI_PREPARATION_AUDIO_IDS : KLEMMI_POSTPROCESSING_AUDIO_IDS;
@@ -1204,7 +1341,8 @@ describe("Klemmi task documents — exact scripts and real tour anchors", () => 
       expect(ids.indexOf(id)).toBe(ids.indexOf(`${guideId}-logbook` as any) + 1);
       expect(ids.indexOf(`${guideId}-save` as any)).toBe(ids.indexOf(id) + 1);
       expect(KLEMMI_AUDIO_VOICE_MANIFEST[id].voice).toBe(profile.voice);
-      expect(klemmiAudioUrl(id)).toBe(`/api/klemmi/audio/${id}?v=20261106-task-documents-v1`);
+      expect(klemmiAudioUrl(id)).toBe(`/api/klemmi/audio/${id}?v=20261106-attachments-pro-short-v2`);
+      expect(KLEMMI_AUDIO_SCRIPTS["finances-receipts"]).toBe(DOCUMENT_GUIDE_SCRIPT);
       for (const unchanged of ids.filter(value => value !== id))
         expect(klemmiAudioUrl(unchanged)).toBe(`/api/klemmi/audio/${unchanged}?v=20261019-puck-prep-post-v1`);
     }
@@ -1265,6 +1403,14 @@ describe("Klemmi task documents — exact scripts and real tour anchors", () => 
               if (key === "documents") {
                 expect(html).toMatch(new RegExp(`<button[^>]*data-klemmi-target="${guideId}-documents"`));
                 expect(html).not.toContain("Vorhandene Dateien");
+                if (packageId === "event_pass" || packageId === "light") {
+                  const footer = html.match(new RegExp(`<button[^>]*data-klemmi-target="${guideId}-documents"[^>]*>`))?.[0] ?? "";
+                  expect(footer).toContain('aria-disabled="true"');
+                  expect(footer).toContain('title="Belege / Dokumente – ab Pro"');
+                  state.buttons.get(`${guideId}-documents`)!();
+                  expect(renderGuidePage(Page)).not.toContain("Vorhandene Dateien");
+                  expect(state.countsQuery.mock.calls.every(([, options]) => options.enabled === false)).toBe(true);
+                }
               }
               state.guide.onStepAction(key);
             }

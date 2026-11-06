@@ -1588,6 +1588,7 @@ const pdfReadProcedure = moduleReadProcedure("pdf").use(async ({ ctx, next }) =>
 /** Keine Namens-/Betreuerzuordnung: Belegrechte stammen aus expliziten Kontoverknüpfungen. */
 async function taskDocumentActor(user: NonNullable<import("./_core/context").TrpcContext["user"]>, area: "prep" | "post"): Promise<taskDocumentService.TaskDocumentActor> {
   rejectPublicDemoExternalAction(user);
+  await requireCurrentProductCapability("document_attachments");
   const module = area === "prep" ? "preparation" : "postprocessing";
   await requireCurrentProductModule(module);
   const accessId = planningTeamAccessIdForUser(user);
@@ -1646,6 +1647,13 @@ const marketingReadProcedure = productModuleReadProcedure("preparation", "market
 const marketingWriteProcedure = productModuleWriteProcedure("preparation", "marketing");
 const approvalsReadProcedure = productModuleReadProcedure("preparation", "approvals");
 const approvalsWriteProcedure = productModuleWriteProcedure("preparation", "approvals");
+
+// Belege bleiben auch zum Lesen Finanz-Schreibrechten vorbehalten. Eine
+// Paketsperre macht vorhandene Dateien nur unzugänglich; sie löscht nichts.
+const financeReceiptWriteProcedure = productModuleWriteProcedure("finances", "document_attachments").use(({ ctx, next }) => {
+  rejectPublicDemoExternalAction(ctx.user);
+  return next({ ctx });
+});
 
 const yn = z.enum(["ja", "nein"]);
 const ynv = z.enum(["ja", "nein", "vielleicht"]);
@@ -6914,24 +6922,24 @@ export const appRouter = router({
         await requireFinance(input.id);
         return db.appendFinanceNote(input.id, input.text, auditActor(ctx.user).name);
       }),
-    receipts: moduleWriteProcedure("finances")
+    receipts: financeReceiptWriteProcedure
       .input(z.object({ financeId: z.number().int().positive() }))
       .query(({ input }) => listFinanceReceipts(input.financeId)),
-    payers: moduleWriteProcedure("finances").query(() => listFinancePayers()),
-    uploadReceipt: moduleWriteProcedure("finances")
+    payers: financeReceiptWriteProcedure.query(() => listFinancePayers()),
+    uploadReceipt: financeReceiptWriteProcedure
       .input(z.object({
         financeId: z.number().int().positive(), title: z.string().trim().min(1).max(160),
         paidBy: z.string().trim().min(1).max(160), fileName: z.string().trim().min(1).max(200),
         pdfBase64: z.string().min(1).max(7_000_000),
       }))
       .mutation(({ input }) => uploadFinanceReceipt(input)),
-    downloadReceipt: moduleWriteProcedure("finances")
+    downloadReceipt: financeReceiptWriteProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ input }) => downloadFinanceReceipt(input.id)),
-    removeReceipt: moduleWriteProcedure("finances")
+    removeReceipt: financeReceiptWriteProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ input }) => removeFinanceReceipt(input.id)),
-    exportReceipts: moduleWriteProcedure("finances")
+    exportReceipts: financeReceiptWriteProcedure
       .input(z.object({ financeId: z.number().int().positive().optional() }))
       .mutation(({ input }) => exportFinanceReceipts(input.financeId)),
     remove: moduleWriteProcedure("finances")
