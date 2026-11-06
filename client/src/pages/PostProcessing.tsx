@@ -49,6 +49,7 @@ import { downloadBase64File } from "@/lib/download";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { useViewMode } from "@/hooks/useViewMode";
 import { getKlemmiLocationGuideCopy } from "@/lib/klemmi-location-guide";
+import { KLEMMI_AUDIO_SCRIPTS } from "@/lib/klemmiAudio";
 import {
   deriveOwnDirectHelperIds,
   matchesMyDirectTaskAssignment,
@@ -768,6 +769,8 @@ export default function PostProcessing() {
     "postprocessing",
     currentPackageId
   );
+  const [documentsGuideTitle, ...documentsGuideSentences] =
+    KLEMMI_AUDIO_SCRIPTS["postprocessing-documents"].split(". ");
   const postprocessingGuideSteps = [
     {
       key: "intro",
@@ -782,7 +785,7 @@ export default function PostProcessing() {
     {
       key: "area-location",
       selector: '[data-klemmi-target="postprocessing-area-location"]',
-      eyebrow: "Schritt 1 von 6",
+      eyebrow: "Schritt 1 von 7",
       title: postprocessingLocationGuide.title,
       text: postprocessingLocationGuide.text,
       audioKey: postprocessingLocationGuide.audioKey,
@@ -791,7 +794,7 @@ export default function PostProcessing() {
     {
       key: "task",
       selector: '[data-klemmi-target="postprocessing-task"]',
-      eyebrow: "Schritt 2 von 6",
+      eyebrow: "Schritt 2 von 7",
       title: "Aufgabe konkret benennen",
       text: "Schreibe kurz und eindeutig, was nach dem Event erledigt werden muss – zum Beispiel Rückgabe, Abbau oder Abrechnung.",
       action: "Zuständigkeit festlegen",
@@ -799,7 +802,7 @@ export default function PostProcessing() {
     {
       key: "details",
       selector: '[data-klemmi-target="postprocessing-details"]',
-      eyebrow: "Schritt 3 von 6",
+      eyebrow: "Schritt 3 von 7",
       title: "Verantwortung und Termin setzen",
       text: "Ordne die Aufgabe bei Bedarf einer Person zu und lege eine Frist fest. Beides darf später angepasst werden.",
       action: "Übergabe notieren",
@@ -807,15 +810,23 @@ export default function PostProcessing() {
     {
       key: "logbook",
       selector: '[data-klemmi-target="postprocessing-logbook"]',
-      eyebrow: "Schritt 4 von 6",
+      eyebrow: "Schritt 4 von 7",
       title: "Übergabe und Hinweise dokumentieren",
       text: "Im Logbuch kommen wichtige Hinweise, Ergebnisse und nächste Schritte. So bleibt der Abschluss nachvollziehbar.",
+      action: "Anhänge zeigen",
+    },
+    {
+      key: "documents",
+      selector: '[data-klemmi-target="postprocessing-documents"]',
+      eyebrow: "Schritt 5 von 7",
+      title: documentsGuideTitle,
+      text: documentsGuideSentences.join(". "),
       action: "Speichern zeigen",
     },
     {
       key: "save",
       selector: '[data-klemmi-target="postprocessing-save"]',
-      eyebrow: "Schritt 5 von 6",
+      eyebrow: "Schritt 6 von 7",
       title: "Aufgabe speichern",
       text: klemmiGuideNeedsSample
         ? "Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Nachbereitungsaufgabe an."
@@ -827,7 +838,7 @@ export default function PostProcessing() {
     {
       key: "overview",
       selector: '[data-klemmi-target="postprocessing-overview"]',
-      eyebrow: "Schritt 6 von 6",
+      eyebrow: "Schritt 7 von 7",
       title: "Nachbereitungsübersicht nutzen",
       text: klemmiGuideNeedsSample
         ? "Deine Musteraufgabe ist jetzt sichtbar. Sie darf als echte Aufgabe stehen bleiben oder kann über das rote Löschen-Symbol wieder entfernt werden."
@@ -869,6 +880,9 @@ export default function PostProcessing() {
             onStepAction={stepKey => {
               if (stepKey === "intro") openCreate();
               if (stepKey === "save" && !klemmiGuideNeedsSample) setDialogOpen(false);
+            }}
+            onStepChange={stepKey => {
+              if (stepKey !== "intro") setDialogOpen(stepKey !== "overview");
             }}
             completionTitle="Nachbereitungsaufgabe angelegt!"
             completionText="Die Aufgabe steht jetzt in der Nachbereitung. So bleiben Abbau, Rückgaben und offene Punkte für das Team sichtbar."
@@ -1607,7 +1621,7 @@ export default function PostProcessing() {
             {documents.drafts.length} Datei(en) {editingTask ? "noch nicht hochgeladen" : "lokal vorgemerkt"}.
           </p>}
           <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between">
-            <TaskDocumentsButton disabled={pending} onClick={() => setDocumentsOpen(true)} />
+            <TaskDocumentsButton guideTarget="postprocessing-documents" disabled={pending} onClick={() => setDocumentsOpen(true)} />
             <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={closeDialog} disabled={pending}>
               <X className="mr-1 h-4 w-4" />

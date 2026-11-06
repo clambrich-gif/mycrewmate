@@ -361,8 +361,10 @@ describe("finance documents UI (synthetic fixtures only)", () => {
     expect(notebook).toContain("finances.appendNote.useMutation");
     expect(notebook).toContain("utils.finances.list.invalidate()");
     expect(pageSource()).toContain('canWriteModule("finances")');
-    expect(pageSource()).toContain('audioGuideId="finances-dialog-text"');
-    expect(pageSource()).toContain("voiceMuted");
+    expect(pageSource()).toContain('audioGuideId="finances"');
+    expect(pageSource()).not.toContain("finances-dialog-text");
+    expect(pageSource()).not.toContain("voiceMuted");
+    expect(pageSource()).toContain('data-klemmi-target="finances-receipts"');
     expect(FINANCE_RECEIPT_BACKUP_HINT).toContain("keine PDF-Dateien");
     expect(FINANCE_RECEIPT_BACKUP_HINT).toContain(
       "keine Datei für den normalen JSON-Import"

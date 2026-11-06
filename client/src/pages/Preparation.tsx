@@ -66,6 +66,7 @@ import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { useViewMode } from "@/hooks/useViewMode";
 import { LocationMapLink } from "@/components/LocationMapLink";
 import { getKlemmiLocationGuideCopy } from "@/lib/klemmi-location-guide";
+import { KLEMMI_AUDIO_SCRIPTS } from "@/lib/klemmiAudio";
 import {
   deriveOwnDirectHelperIds,
   matchesMyDirectTaskAssignment,
@@ -849,6 +850,8 @@ export default function Preparation() {
     "preparation",
     currentPackageId
   );
+  const [documentsGuideTitle, ...documentsGuideSentences] =
+    KLEMMI_AUDIO_SCRIPTS["preparation-documents"].split(". ");
   const preparationGuideSteps = [
     {
       key: "intro",
@@ -863,7 +866,7 @@ export default function Preparation() {
     {
       key: "area-location",
       selector: '[data-klemmi-target="preparation-area-location"]',
-      eyebrow: "Schritt 1 von 6",
+      eyebrow: "Schritt 1 von 7",
       title: preparationLocationGuide.title,
       text: preparationLocationGuide.text,
       audioKey: preparationLocationGuide.audioKey,
@@ -872,7 +875,7 @@ export default function Preparation() {
     {
       key: "task",
       selector: '[data-klemmi-target="preparation-task"]',
-      eyebrow: "Schritt 2 von 6",
+      eyebrow: "Schritt 2 von 7",
       title: "Aufgabe klar formulieren",
       text: "Beschreibe konkret, was erledigt werden soll. Bereich und Ort hast du gerade festgelegt; so lässt sich die Aufgabe später schnell wiederfinden.",
       action: "Zuständigkeit festlegen",
@@ -880,7 +883,7 @@ export default function Preparation() {
     {
       key: "details",
       selector: '[data-klemmi-target="preparation-details"]',
-      eyebrow: "Schritt 3 von 6",
+      eyebrow: "Schritt 3 von 7",
       title: "Verantwortung und Frist zuordnen",
       text: "Wähle bei Bedarf eine verantwortliche Person und einen Termin. Beides kann später jederzeit angepasst werden.",
       action: "Stand dokumentieren",
@@ -888,15 +891,23 @@ export default function Preparation() {
     {
       key: "logbook",
       selector: '[data-klemmi-target="preparation-logbook"]',
-      eyebrow: "Schritt 4 von 6",
+      eyebrow: "Schritt 4 von 7",
       title: "Ersten Stand notieren",
       text: "Im Logbuch gehören wichtige Hinweise, Absprachen und nächste Schritte. Der Eintrag bleibt nachvollziehbar gespeichert.",
+      action: "Anhänge zeigen",
+    },
+    {
+      key: "documents",
+      selector: '[data-klemmi-target="preparation-documents"]',
+      eyebrow: "Schritt 5 von 7",
+      title: documentsGuideTitle,
+      text: documentsGuideSentences.join(". "),
       action: "Speichern zeigen",
     },
     {
       key: "save",
       selector: '[data-klemmi-target="preparation-save"]',
-      eyebrow: "Schritt 5 von 6",
+      eyebrow: "Schritt 6 von 7",
       title: "Aufgabe speichern",
       text: klemmiGuideNeedsSample
         ? "Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Vorbereitungsaufgabe an."
@@ -908,7 +919,7 @@ export default function Preparation() {
     {
       key: "overview",
       selector: '[data-klemmi-target="preparation-overview"]',
-      eyebrow: "Schritt 6 von 6",
+      eyebrow: "Schritt 7 von 7",
       title: "Vorbereitungsübersicht nutzen",
       text: klemmiGuideNeedsSample
         ? "Deine Musteraufgabe ist jetzt sichtbar. Sie darf als echte Aufgabe stehen bleiben oder kann über das rote Löschen-Symbol wieder entfernt werden."
@@ -951,6 +962,9 @@ export default function Preparation() {
             onStepAction={stepKey => {
               if (stepKey === "intro") openCreate();
               if (stepKey === "save" && !klemmiGuideNeedsSample) setDialogOpen(false);
+            }}
+            onStepChange={stepKey => {
+              if (stepKey !== "intro") setDialogOpen(stepKey !== "overview");
             }}
             completionTitle="Vorbereitungsaufgabe angelegt!"
             completionText="Die Aufgabe steht jetzt in der Vorbereitung. Zuständige, Frist und Logbuch kannst du jederzeit weiterführen."
@@ -1779,7 +1793,7 @@ export default function Preparation() {
             {documents.drafts.length} Datei(en) {editingTask ? "noch nicht hochgeladen" : "lokal vorgemerkt"}.
           </p>}
           <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between">
-            <TaskDocumentsButton disabled={pending} onClick={() => setDocumentsOpen(true)} />
+            <TaskDocumentsButton guideTarget="preparation-documents" disabled={pending} onClick={() => setDocumentsOpen(true)} />
             <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={closeDialog} disabled={pending}>
               <X className="mr-1 h-4 w-4" />

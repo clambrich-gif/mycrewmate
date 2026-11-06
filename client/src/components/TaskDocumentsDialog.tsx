@@ -371,12 +371,15 @@ export function TaskDocumentsButton({
   taskTitle,
   compact = false,
   count,
+  guideTarget,
 }: {
   onClick: () => void;
   disabled?: boolean;
   taskTitle?: string;
   compact?: boolean;
   count?: number;
+  /** Ausschließlich Ankerpunkt für die Klemmi-Führung. */
+  guideTarget?: string;
 }) {
   const hasCount = typeof count === "number" && count > 0;
   const label = taskTitle
@@ -394,6 +397,7 @@ export function TaskDocumentsButton({
       }
       disabled={disabled}
       onClick={onClick}
+      data-klemmi-target={guideTarget}
       title="Belege / Dokumente"
       aria-label={`${label}${hasCount ? ` (${count} ${count === 1 ? "Datei" : "Dateien"})` : ""}`}
     >

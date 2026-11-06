@@ -92,6 +92,14 @@ export const KLEMMI_DONATIONS_VOICE_PROFILE = {
     "Geprüfte Klemmi-Stimme-2.0-Aufnahmen für die gesamte Spendenführung – von der Erfassung bis zur Übersicht und Ausgabe.",
 } as const;
 
+/** Alle aktiven Schritte der heutigen Finanz-Dialogführung nutzen Klemmi 2.0. */
+export const KLEMMI_FINANCES_VOICE_PROFILE = {
+  voice: KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName,
+  generationStyle: KLEMMI_VOICE_PRODUCTION_CONFIG.style,
+  generationProfileVersion: KLEMMI_VOICE_PRODUCTION_CONFIG.profileVersion,
+  label: "Klemmi bei Finanzen – freundlich und comicartig",
+} as const;
+
 /**
  * Feste, vorproduzierte Klemmi-Texte. Die Dateien liegen ausschließlich im
  * Produkt-Container und werden erst ausgeliefert, wenn eine Tour bewusst
@@ -253,13 +261,15 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "donations-filters": "Gezielt nach Spenden suchen. Mit Kategorie, Eigenschaften, Abgabetag, Standort und Suche filterst du die Liste. Das ist besonders hilfreich, wenn kurz vor dem Event nur vegane Kuchen, eine bestimmte Abgabezeit oder ein Standort geprüft werden soll.",
   "donations-outputs": "Liste und Faltkärtchen drucken. Der PDF-Druck erstellt die Übersicht der aktuell sichtbaren Spenden und zusätzlich vier ausschneidbare Faltkärtchen pro Seite. Jedes Kärtchen zeigt Produktname, alle gewählten Eigenschaften, Hinweise und, falls hinterlegt, das Vereinslogo. Mit Liste und Kacheln wählst du die passende Bildschirmansicht. In dieser Tour wird nichts gedruckt oder verändert.",
   "donations-complete": "Spenden im Griff! Du weißt jetzt, wie eine Spende erfasst, in der Übersicht wiedergefunden, gefiltert und für das Verpflegungsteam ausgegeben wird.",
-
-  "finances-intro": "Finanzen einfach im Blick behalten. Hier werden Einnahmen und Ausgaben nach Kategorien getrennt geführt. Der Saldo wird für dich automatisch berechnet.",
-  "finances-category": "Kostenart anlegen. Trage eine klare Kategorie ein, zum Beispiel Startgelder, Catering, Technik oder Sponsoring. Mit dem Button daneben wird die neue Zeile angelegt.",
+  "finances-intro": "Finanzen einfach im Blick behalten. Hier siehst du Einnahmen und Ausgaben pro Kategorie. Der Saldo wird automatisch berechnet. Ich zeige dir die Übersicht und die passenden Dialoge, ohne Daten zu verändern.",
+  "finances-category": "Neue Kategorie im Dialog. Über Neue Kategorie öffnest du das Eingabefenster. Dort trägst du die Kategorie, Einnahmen, Ausgaben und bei Bedarf eine erste Notiz ein. Erst Speichern übernimmt deine Angaben. Bestehende Kategorien änderst du über Bearbeiten.",
+  "finances-notebook": "Absprachen im Notizbuch festhalten. Über Notizbuch öffnest du den Verlauf einer Kategorie. Neue Einträge werden mit Datum, Uhrzeit und deinem Namen ergänzt. Bisherige Notizen bleiben erhalten. So bleiben wichtige Absprachen nachvollziehbar.",
+  "finances-notebook-read": "Notizen zur Kategorie ansehen. Über Notizbuch öffnest du den bisherigen Verlauf. Mit deinem Lesezugriff kannst du die Notizen ansehen, aber keine neuen Einträge ergänzen oder Finanzwerte ändern.",
+  "finances-receipts": "Rechnungen zur Kategorie ablegen. Über Belege öffnest du die Rechnungsliste. Gib eine Bezeichnung ein, wähle die Person unter Bezahlt von und lade eine PDF hoch. Du kannst mehrere Rechnungen je Kategorie hinterlegen. Über den PDF-Button lädst du die Rechnung herunter und kannst sie anschließend auf deinem Gerät öffnen. Hochladen, Anzeigen und Herunterladen sind hier ausschließlich mit Finanz-Schreibrecht möglich. Die Belege verändern keine Einnahmen, Ausgaben oder den Saldo. Über Belege sichern kannst du die Rechnungen der Veranstaltung getrennt als ZIP sichern. In dieser Führung wird nichts hochgeladen oder heruntergeladen.",
   "finances-save": "Kategorie übernehmen. Klicke auf den markierten Button. Erst dann wird die Kategorie wirklich angelegt und du kannst Einnahmen und Ausgaben eintragen.",
   "finances-values": "Einnahmen und Ausgaben eintragen. In jeder Kategorie gibst du Einnahmen und Ausgaben ein. Die Werte werden beim Verlassen des Feldes gespeichert; die Differenz zeigt sofort den aktuellen Stand.",
-  "finances-balance": "Saldo gemeinsam prüfen. Ganz unten fasst der Saldo alle Kategorien zusammen. So erkennst du schnell, ob deine Veranstaltung finanziell im Plan liegt.",
-  "finances-complete": "Alles klar! Du weißt jetzt, wo Kategorien, Einzelwerte und der gesamte Saldo zusammenkommen.",
+  "finances-balance": "Den Saldo gemeinsam prüfen. Ganz unten werden Einnahmen und Ausgaben aller Kategorien zusammengefasst. Die Differenz zeigt den aktuellen finanziellen Stand. Rechnungsbelege bleiben davon getrennt.",
+  "finances-complete": "Finanzen im Überblick! Du kennst jetzt die Kategorien, das Notizbuch, die getrennten Rechnungsbelege und den Saldo. Es wurden keine Daten verändert.",
 
   "marketing-intro": "Marketingmaßnahmen verständlich planen. Ich zeige dir, wie du eine Maßnahme mit Kanal, Status und Verantwortlichkeit planst und in der Übersicht nachhältst.",
   "marketing-name": "Maßnahme klar benennen. Trage ein, was veröffentlicht oder organisiert werden soll, zum Beispiel Pressemitteilung, Plakataktion oder Social-Media-Beitrag.",
@@ -367,6 +377,7 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "preparation-task": "Aufgabe klar formulieren. Beschreibe konkret, was erledigt werden soll. Bereich und Ort helfen, die Aufgabe später schnell wiederzufinden.",
   "preparation-details": "Verantwortung und Frist zuordnen. Wähle bei Bedarf eine verantwortliche Person und einen Termin. Beides kann später jederzeit angepasst werden.",
   "preparation-logbook": "Ersten Stand notieren. Im Logbuch gehören wichtige Hinweise, Absprachen und nächste Schritte. Der Eintrag bleibt nachvollziehbar gespeichert.",
+  "preparation-documents": "Belege und Dokumente zur Aufgabe. Über diesen Button wählst du Dokument oder Beleg. Fotos, PDFs und Word-Dateien sind Dokumente. Für eine Rechnung wählst du Beleg, gibst die Bezeichnung und die Person unter Bezahlt von an und fügst eine PDF hinzu. Bei neuen Aufgaben wird sie erst nach dem Speichern hochgeladen. Später öffnest du die Anhänge über die Büroklammer. Die Zahl zählt alle Dateien. Bereichsleser dürfen Dokumente öffnen und herunterladen. Bei Rechnungen sehen alle die Angaben, öffnen und herunterladen dürfen Bereichsschreiber, Finanzschreiber, Hochladende, Zahlende und Aufgabenverantwortliche. Sonst steht am Schloss: Nur für berechtigte Personen.",
   "preparation-save": "Aufgabe speichern. Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Vorbereitungsaufgabe an.",
   "preparation-complete": "Vorbereitungsaufgabe angelegt! Die Aufgabe steht jetzt in der Vorbereitung. Zuständige, Frist und Logbuch kannst du jederzeit weiterführen.",
 
@@ -377,6 +388,7 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "postprocessing-task": "Aufgabe konkret benennen. Schreibe kurz und eindeutig, was nach dem Event erledigt werden muss – zum Beispiel Rückgabe, Abbau oder Abrechnung.",
   "postprocessing-details": "Verantwortung und Termin setzen. Ordne die Aufgabe bei Bedarf einer Person zu und lege eine Frist fest. Beides darf später angepasst werden.",
   "postprocessing-logbook": "Übergabe und Hinweise dokumentieren. Im Logbuch kommen wichtige Hinweise, Ergebnisse und nächste Schritte. So bleibt der Abschluss nachvollziehbar.",
+  "postprocessing-documents": "Belege und Dokumente zur Nachbereitungsaufgabe. Über diesen Button wählst du Dokument oder Beleg. Fotos, PDFs und Word-Dateien sind Dokumente. Für eine Rechnung wählst du Beleg, gibst die Bezeichnung und die Person unter Bezahlt von an und fügst eine PDF hinzu. Bei neuen Aufgaben wird sie erst nach dem Speichern hochgeladen. Später öffnest du die Anhänge über die Büroklammer. Die Zahl zählt alle Dateien. Bereichsleser dürfen Dokumente öffnen und herunterladen. Bei Rechnungen sehen alle die Angaben, öffnen und herunterladen dürfen Bereichsschreiber, Finanzschreiber, Hochladende, Zahlende und Aufgabenverantwortliche. Sonst steht am Schloss: Nur für berechtigte Personen.",
   "postprocessing-save": "Aufgabe speichern. Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Nachbereitungsaufgabe an.",
   "postprocessing-complete": "Nachbereitungsaufgabe angelegt! Die Aufgabe steht jetzt in der Nachbereitung. So bleiben Abbau, Rückgaben und offene Punkte für das Team sichtbar.",
 
@@ -451,8 +463,8 @@ export const KLEMMI_CONTACTS_AUDIO_IDS: readonly KlemmiAudioId[] =
   ]);
 
 /** Alle festen Aufnahmen der echten Helfer-Führung, ohne Demo-Sonderfälle. */
-export const KLEMMI_HELPERS_AUDIO_IDS: readonly KlemmiAudioId[] =
-  Object.freeze([
+export const KLEMMI_HELPERS_AUDIO_IDS: readonly KlemmiAudioId[] = Object.freeze(
+  [
     "helpers-opening",
     "helpers-overview",
     "helpers-person",
@@ -476,7 +488,8 @@ export const KLEMMI_HELPERS_AUDIO_IDS: readonly KlemmiAudioId[] =
     "helpers-action-delete",
     "helpers-action-cancellation",
     "helpers-complete",
-  ]);
+  ]
+);
 
 /** Alle festen Aufnahmen der echten Vorbereitungs-Führung. */
 export const KLEMMI_PREPARATION_AUDIO_IDS: readonly KlemmiAudioId[] =
@@ -489,6 +502,7 @@ export const KLEMMI_PREPARATION_AUDIO_IDS: readonly KlemmiAudioId[] =
     "preparation-task",
     "preparation-details",
     "preparation-logbook",
+    "preparation-documents",
     "preparation-save",
     "preparation-complete",
     "preparation-overview-save",
@@ -506,10 +520,23 @@ export const KLEMMI_POSTPROCESSING_AUDIO_IDS: readonly KlemmiAudioId[] =
     "postprocessing-task",
     "postprocessing-details",
     "postprocessing-logbook",
+    "postprocessing-documents",
     "postprocessing-save",
     "postprocessing-complete",
     "postprocessing-overview-save",
     "postprocessing-overview",
+  ]);
+
+/** Nur die aktive Finanzführung, keine stillgelegten Inline-Edit-Clips. */
+export const KLEMMI_FINANCES_AUDIO_IDS: readonly KlemmiAudioId[] =
+  Object.freeze([
+    "finances-intro",
+    "finances-category",
+    "finances-notebook",
+    "finances-notebook-read",
+    "finances-receipts",
+    "finances-balance",
+    "finances-complete",
   ]);
 
 /**
@@ -567,7 +594,7 @@ type KlemmiVoiceName =
 /**
  * Jede Tourreferenz gehört verbindlich zu einer vorproduzierten Klemmi-Stimme.
  * Einsatzplan, Helferführung, öffentliche Vereinsdemo, Ansprechpartner, Vor- und
- * Nachbereitung, Material und Spenden verweisen auf das quirlige Klemmi-Stimmenprofil;
+ * Nachbereitung, Material, Spenden und die aktive Finanzführung verweisen auf das quirlige Klemmi-Stimmenprofil;
  * die übrigen Bereiche verwenden Achird.
  * Browser-Systemstimmen werden nie verwendet.
  */
@@ -578,8 +605,9 @@ export const KLEMMI_AUDIO_VOICE_MANIFEST: Readonly<
     (Object.keys(KLEMMI_AUDIO_SCRIPTS) as KlemmiAudioId[]).map(id => [
       id,
       {
-        voice:
-          KLEMMI_PLAN_AUDIO_IDS.includes(id)
+        voice: KLEMMI_FINANCES_AUDIO_IDS.includes(id)
+          ? KLEMMI_FINANCES_VOICE_PROFILE.voice
+          : KLEMMI_PLAN_AUDIO_IDS.includes(id)
             ? KLEMMI_PLAN_VOICE_PROFILE.voice
             : KLEMMI_PREPARATION_AUDIO_IDS.includes(id)
               ? KLEMMI_PREPARATION_VOICE_PROFILE.voice
@@ -782,7 +810,8 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "preparation-area-location-pro": "20260930-package-location-tour-v1",
   "preparation-overview-save": "20260928-adaptive-area-tour-v1",
   "preparation-overview": "20260928-adaptive-area-tour-v1",
-  "postprocessing-area-location-event-pass": "20260930-package-location-tour-v1",
+  "postprocessing-area-location-event-pass":
+    "20260930-package-location-tour-v1",
   "postprocessing-area-location-light": "20260930-package-location-tour-v1",
   "postprocessing-area-location-pro": "20260930-package-location-tour-v1",
   "postprocessing-overview-save": "20260928-adaptive-area-tour-v1",
@@ -792,7 +821,8 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "materials-intro": "20261020-klemmi-stimme-v2-material-intro-a-v1",
   "materials-name": "20261020-klemmi-stimme-v2-material-name-c-v1",
   "materials-details": "20261020-klemmi-stimme-v2-material-details-c-v1",
-  "materials-responsible": "20261020-klemmi-stimme-v2-material-responsible-c-v1",
+  "materials-responsible":
+    "20261020-klemmi-stimme-v2-material-responsible-c-v1",
   "materials-save": "20261020-klemmi-stimme-v2-material-save-c-v1",
   "materials-notebook": "20261027-klemmi-stimme-v2-material-notebook-c-v1",
   "materials-complete": "20261020-klemmi-stimme-v2-material-complete-a-v1",
@@ -811,8 +841,12 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   ...Object.fromEntries(
     KLEMMI_POSTPROCESSING_AUDIO_IDS.map(id => [id, "20261019-puck-prep-post-v1"])
   ),
-  "donations-overview-save": "20261020-klemmi-stimme-v2-donations-overview-save-c-v1",
-  "donations-overview-summary": "20261020-klemmi-stimme-v2-donations-overview-summary-b-v1",
+  "preparation-documents": "20261106-task-documents-v1",
+  "postprocessing-documents": "20261106-task-documents-v1",
+  "donations-overview-save":
+    "20261020-klemmi-stimme-v2-donations-overview-save-c-v1",
+  "donations-overview-summary":
+    "20261020-klemmi-stimme-v2-donations-overview-summary-b-v1",
   "finances-overview-save": "20260928-adaptive-area-tour-v1",
   "finances-overview": "20260928-adaptive-area-tour-v1",
   "plan-search": "20261010-puck-plan-v1",
@@ -842,13 +876,13 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "security-accesses-coadmin-locked": "20260930-security-package-steps-v1",
   "security-accesses-events-locked": "20260930-security-package-steps-v1",
   ...Object.fromEntries(
-    KLEMMI_PUBLIC_DEMO_AUDIO_IDS.map(id => [
-      id,
-      "20261019-puck-public-demo-v1",
-    ])
+    KLEMMI_PUBLIC_DEMO_AUDIO_IDS.map(id => [id, "20261019-puck-public-demo-v1"])
   ),
   ...Object.fromEntries(
     KLEMMI_HELPERS_AUDIO_IDS.map(id => [id, "20261019-puck-helpers-v1"])
+  ),
+  ...Object.fromEntries(
+    KLEMMI_FINANCES_AUDIO_IDS.map(id => [id, "20261106-klemmi-v2-finances-v1"])
   ),
 };
 
@@ -858,5 +892,7 @@ export function isKlemmiAudioId(value: string): value is KlemmiAudioId {
 
 export function klemmiAudioUrl(id: KlemmiAudioId) {
   const revision = KLEMMI_AUDIO_REVISIONS[id];
-  return revision ? `${KLEMMI_AUDIO_ROUTE}/${id}?v=${revision}` : `${KLEMMI_AUDIO_ROUTE}/${id}`;
+  return revision
+    ? `${KLEMMI_AUDIO_ROUTE}/${id}?v=${revision}`
+    : `${KLEMMI_AUDIO_ROUTE}/${id}`;
 }

@@ -21,6 +21,14 @@ const state = vi.hoisted(() => ({
   invalidate: vi.fn(),
   invalidateCounts: vi.fn(),
   buttons: new Map<string, () => void>(),
+  capturePageState: false,
+  pageState: [] as unknown[],
+  pageStateIndex: 0,
+  guide: null as any,
+  rows: null as any[] | null,
+  packageId: "event_pass",
+  createTask: vi.fn(),
+  mutateTask: vi.fn(),
   data: {
     files: [] as any[],
     canUploadDocuments: false,
@@ -33,6 +41,25 @@ const state = vi.hoisted(() => ({
   ],
 }));
 
+// Persist only the page's hook state between synthetic SSR renders. Child UI
+// components still use real React hooks; no browser, DB or storage is involved.
+vi.mock("react", async importOriginal => {
+  const actual = await importOriginal<typeof import("react")>();
+  return {
+    ...actual,
+    useState: (initial: unknown) => {
+      if (!state.capturePageState) return actual.useState(initial);
+      const index = state.pageStateIndex++;
+      if (!(index in state.pageState))
+        state.pageState[index] = typeof initial === "function" ? initial() : initial;
+      return [state.pageState[index], (next: any) => {
+        state.pageState[index] = typeof next === "function"
+          ? next(state.pageState[index]) : next;
+      }];
+    },
+  };
+});
+
 vi.mock("@/components/ui/button", async importOriginal => {
   const actual =
     await importOriginal<typeof import("@/components/ui/button")>();
@@ -42,6 +69,8 @@ vi.mock("@/components/ui/button", async importOriginal => {
     Button: (props: React.ComponentProps<typeof actual.Button>) => {
       if (props["aria-label"] && props.onClick)
         state.buttons.set(props["aria-label"], () => props.onClick!({} as any));
+      if (props["data-klemmi-target"] && props.onClick)
+        state.buttons.set(props["data-klemmi-target"], () => props.onClick!({} as any));
       return createElement(actual.Button, props);
     },
   };
@@ -93,7 +122,10 @@ vi.mock("wouter", () => ({
   useSearchParams: () => [new URLSearchParams(), vi.fn()],
 }));
 vi.mock("@/components/KlemmiSurfaceGuide", () => ({
-  KlemmiSurfaceGuide: () => null,
+  KlemmiSurfaceGuide: (props: unknown) => {
+    state.guide = props;
+    return null;
+  },
 }));
 vi.mock("@/components/PlanResetDialogButton", () => ({
   PlanResetDialogButton: () => null,
@@ -122,13 +154,22 @@ vi.mock("@/lib/trpc", () => {
   const mutation = {
     useMutation: () => ({
       isPending: false,
-      mutate: vi.fn(),
-      mutateAsync: vi.fn(),
+      mutate: state.mutateTask,
+      mutateAsync: state.mutateTask,
     }),
   };
   const module = {
-    list: { useQuery: () => ({ data: [task], isLoading: false }) },
-    create: mutation,
+    list: { useQuery: () => ({ data: state.rows ?? [task], isLoading: false }) },
+    create: {
+      useMutation: (options: any) => ({
+        isPending: false,
+        mutateAsync: async (input: unknown) => {
+          const created = await state.createTask(input);
+          options.onSuccess(created, input, {});
+          return created;
+        },
+      }),
+    },
     update: mutation,
     remove: mutation,
   };
@@ -140,8 +181,8 @@ vi.mock("@/lib/trpc", () => {
           counts: { invalidate: state.invalidateCounts },
           download: { fetch: state.download },
         },
-        prep: { list: { invalidate: vi.fn() } },
-        post: { list: { invalidate: vi.fn() } },
+        prep: { list: { invalidate: vi.fn(), setData: vi.fn() } },
+        post: { list: { invalidate: vi.fn(), setData: vi.fn() } },
         dashboard: { invalidate: vi.fn() },
       }),
       taskDocuments: {
@@ -194,7 +235,7 @@ vi.mock("@/lib/trpc", () => {
       prep: module,
       post: module,
       tenantProduct: {
-        current: { useQuery: () => ({ data: { packageId: "event_pass" } }) },
+        current: { useQuery: () => ({ data: { packageId: state.packageId } }) },
       },
       contacts: { list: { useQuery: () => ({ data: [] }) } },
       helpers: { list: { useQuery: () => ({ data: [] }) } },
@@ -221,6 +262,16 @@ import {
   type TaskDocumentDraftController,
   type TaskDocumentFile,
 } from "../client/src/components/TaskDocumentsDialog";
+import {
+  KLEMMI_AUDIO_SCRIPTS,
+  KLEMMI_AUDIO_VOICE_MANIFEST,
+  KLEMMI_PREPARATION_AUDIO_IDS,
+  KLEMMI_POSTPROCESSING_AUDIO_IDS,
+  KLEMMI_PREPARATION_VOICE_PROFILE,
+  KLEMMI_POSTPROCESSING_VOICE_PROFILE,
+  isKlemmiAudioId,
+  klemmiAudioUrl,
+} from "../client/src/lib/klemmiAudio";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -230,6 +281,13 @@ beforeEach(() => {
   state.payerError = null;
   state.buttons.clear();
   state.removeMutation = null;
+  state.capturePageState = false;
+  state.pageState = [];
+  state.pageStateIndex = 0;
+  state.guide = null;
+  state.rows = null;
+  state.packageId = "event_pass";
+  state.createTask.mockResolvedValue({ id: 74 });
   state.counts = [{ taskId: 41, count: 3 }];
   state.data = {
     files: [],
@@ -376,7 +434,7 @@ describe("task document UI — synthetic mocks only", () => {
     for (const page of ["Preparation", "PostProcessing"]) {
       const text = source(`client/src/pages/${page}.tsx`);
       expect(text).toContain("sm:justify-between");
-      expect(text).toContain("<TaskDocumentsButton disabled={pending}");
+      expect(text).toMatch(/<TaskDocumentsButton guideTarget="[^"]+-documents" disabled=\{pending\}/);
       expect(text).toContain('className="flex justify-end gap-2"');
     }
   });
@@ -604,12 +662,16 @@ describe("task document UI — synthetic mocks only", () => {
         mimeType:
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       }),
+      row({ id: 6, title: "Word DOC", fileName: "brief.doc", mimeType: "application/msword" }),
     ];
     const html = renderDialog();
     expect(html).toContain('aria-label="PDF in neuer Vorschau anzeigen"');
     expect(html).toContain('aria-label="JPEG in neuer Vorschau anzeigen"');
     expect(html).not.toContain('aria-label="Word in neuer Vorschau anzeigen"');
     expect(html).toContain('aria-label="Word herunterladen"');
+    expect(html).not.toContain('aria-label="Word DOC in neuer Vorschau anzeigen"');
+    expect(html).toContain('aria-label="Word DOC herunterladen"');
+    expect(html).toContain("Word-Dateien werden heruntergeladen.");
     expect(taskDocumentCanPreview("text/html")).toBe(false);
   });
 });
@@ -1099,4 +1161,159 @@ describe("Blob preview/download resource cleanup", () => {
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:one");
     viewer.dispose();
   });
+});
+
+const DOCUMENT_GUIDE_BODY = "Über diesen Button wählst du Dokument oder Beleg. Fotos, PDFs und Word-Dateien sind Dokumente. Für eine Rechnung wählst du Beleg, gibst die Bezeichnung und die Person unter Bezahlt von an und fügst eine PDF hinzu. Bei neuen Aufgaben wird sie erst nach dem Speichern hochgeladen. Später öffnest du die Anhänge über die Büroklammer. Die Zahl zählt alle Dateien. Bereichsleser dürfen Dokumente öffnen und herunterladen. Bei Rechnungen sehen alle die Angaben, öffnen und herunterladen dürfen Bereichsschreiber, Finanzschreiber, Hochladende, Zahlende und Aufgabenverantwortliche. Sonst steht am Schloss: Nur für berechtigte Personen.";
+const GUIDE_PAGES = [
+  ["preparation", Preparation, "prep", "Belege und Dokumente zur Aufgabe"],
+  ["postprocessing", PostProcessing, "post", "Belege und Dokumente zur Nachbereitungsaufgabe"],
+] as const;
+
+// Invoke the real page inside a React render, retaining only its state. This
+// exercises the actual dialog/footer/buttons rather than a source-only anchor.
+function renderGuidePage(Page: typeof Preparation | typeof PostProcessing) {
+  state.pageStateIndex = 0;
+  const Capture = () => {
+    state.capturePageState = true;
+    try {
+      return Page();
+    } finally {
+      state.capturePageState = false;
+    }
+  };
+  return renderToStaticMarkup(createElement(Capture));
+}
+
+function expectNoDocumentSideEffects() {
+  expect(state.upload).not.toHaveBeenCalled();
+  expect(state.download).not.toHaveBeenCalled();
+  expect(state.remove).not.toHaveBeenCalled();
+  expect(state.mutateTask).not.toHaveBeenCalled();
+}
+
+describe("Klemmi task documents — exact scripts and real tour anchors", () => {
+  it.each(GUIDE_PAGES)(
+    "%s uses the exact full script, existing voice category and new isolated cache revision",
+    (guideId, _Page, area, title) => {
+      const id = `${guideId}-documents` as "preparation-documents" | "postprocessing-documents";
+      const ids = area === "prep" ? KLEMMI_PREPARATION_AUDIO_IDS : KLEMMI_POSTPROCESSING_AUDIO_IDS;
+      const profile = area === "prep" ? KLEMMI_PREPARATION_VOICE_PROFILE : KLEMMI_POSTPROCESSING_VOICE_PROFILE;
+      expect(KLEMMI_AUDIO_SCRIPTS[id]).toBe(`${title}. ${DOCUMENT_GUIDE_BODY}`);
+      expect(ids.filter(value => value === id)).toHaveLength(1);
+      expect(ids).toHaveLength(13);
+      expect(ids.indexOf(id)).toBe(ids.indexOf(`${guideId}-logbook` as any) + 1);
+      expect(ids.indexOf(`${guideId}-save` as any)).toBe(ids.indexOf(id) + 1);
+      expect(KLEMMI_AUDIO_VOICE_MANIFEST[id].voice).toBe(profile.voice);
+      expect(klemmiAudioUrl(id)).toBe(`/api/klemmi/audio/${id}?v=20261106-task-documents-v1`);
+      for (const unchanged of ids.filter(value => value !== id))
+        expect(klemmiAudioUrl(unchanged)).toBe(`/api/klemmi/audio/${unchanged}?v=20261019-puck-prep-post-v1`);
+    }
+  );
+
+  it.each(GUIDE_PAGES)(
+    "%s forwards guideTarget onto a real non-submit button and never clicks it while rendering",
+    (guideId) => {
+      const onClick = vi.fn();
+      const html = renderToStaticMarkup(createElement(TaskDocumentsButton, {
+        guideTarget: `${guideId}-documents`,
+        onClick,
+      }));
+      expect(html).toMatch(new RegExp(`<button[^>]*type="button"[^>]*data-klemmi-target="${guideId}-documents"`));
+      expect(onClick).not.toHaveBeenCalled();
+      expectNoDocumentSideEffects();
+      expect(renderToStaticMarkup(createElement(TaskDocumentsButton, { onClick })))
+        .not.toContain("data-klemmi-target");
+    }
+  );
+
+  for (const packageId of ["event_pass", "light", "pro", "enterprise"]) {
+    for (const canWrite of [false, true]) {
+      for (const empty of [false, true]) {
+        it.each(GUIDE_PAGES)(
+          `%s keeps all seven steps and forward/back anchors (${packageId}, ${canWrite ? "writer" : "reader"}, ${empty ? "empty" : "existing"}) without file actions`,
+          (guideId, Page, _area, title) => {
+            state.packageId = packageId;
+            state.canWrite = canWrite;
+            if (empty) state.rows = [];
+            renderGuidePage(Page);
+            state.guide.onOpenChange(true);
+            renderGuidePage(Page);
+            const keys = ["intro", "area-location", "task", "details", "logbook", "documents", "save", "overview"];
+            expect(state.guide.steps.map((step: any) => step.key)).toEqual(keys);
+            expect(state.guide.steps.filter((step: any) => step.key === "documents")).toHaveLength(1);
+            for (const [index, step] of state.guide.steps.filter((step: any) => step.key !== "intro").entries())
+              expect(step.eyebrow).toBe(`Schritt ${index + 1} von 7`);
+            const documentsStep = state.guide.steps.find((step: any) => step.key === "documents");
+            expect(documentsStep.title).toBe(title);
+            expect(documentsStep.text).toBe(DOCUMENT_GUIDE_BODY);
+            expect(`${documentsStep.title}. ${documentsStep.text}`)
+              .toBe(KLEMMI_AUDIO_SCRIPTS[`${guideId}-documents` as "preparation-documents" | "postprocessing-documents"]);
+            expect(documentsStep.waitsForSuccess).toBeUndefined();
+            expect(documentsStep.action).toBe("Speichern zeigen");
+            const save = state.guide.steps.find((step: any) => step.key === "save");
+            expect(save.waitsForSuccess).toBe(empty);
+            expect(save.audioKey).toBe(empty ? "save" : "overview-save");
+            expect(state.guide.completionAudioKey).toBe(empty ? "complete" : "overview");
+            state.guide.onStepAction("intro");
+            for (const key of keys.slice(1)) {
+              state.guide.onStepChange(key);
+              const html = renderGuidePage(Page);
+              const step = state.guide.steps.find((item: any) => item.key === key);
+              const target = step.selector.match(/data-klemmi-target="([^"]+)"/)[1];
+              expect(html).toContain(`data-klemmi-target="${target}"`);
+              expect(isKlemmiAudioId(`${guideId}-${step.audioKey ?? step.key}`)).toBe(true);
+              if (key === "documents") {
+                expect(html).toMatch(new RegExp(`<button[^>]*data-klemmi-target="${guideId}-documents"`));
+                expect(html).not.toContain("Vorhandene Dateien");
+              }
+              state.guide.onStepAction(key);
+            }
+            for (const key of [...keys.slice(1, -1)].reverse()) {
+              state.guide.onStepChange(key);
+              expect(renderGuidePage(Page)).toContain(`data-klemmi-target="${guideId}-${key}"`);
+            }
+            state.guide.onOpenChange(false);
+            expect(renderGuidePage(Page)).not.toContain(`data-klemmi-target="${guideId}-documents"`);
+            expect(state.listQuery).not.toHaveBeenCalled();
+            expect(state.payerQuery).not.toHaveBeenCalled();
+            expect(state.createTask).not.toHaveBeenCalled();
+            expectNoDocumentSideEffects();
+          }
+        );
+      }
+    }
+  }
+
+  it.each(GUIDE_PAGES)(
+    "%s waits for an explicit successful task save, not the documents step",
+    async (_guideId, Page) => {
+      state.canWrite = true;
+      state.rows = [];
+      renderGuidePage(Page);
+      state.guide.onOpenChange(true);
+      renderGuidePage(Page);
+      state.guide.onStepAction("intro");
+      renderGuidePage(Page);
+      state.guide.onStepAction("documents");
+      expect(state.createTask).not.toHaveBeenCalled();
+      // Fill only synthetic page state; post retains its existing owner validation.
+      const formIndex = state.pageState.findIndex(value => Boolean(value && typeof value === "object" && "logEntry" in value && "task" in value));
+      expect(formIndex).toBeGreaterThan(-1);
+      state.pageState[formIndex] = { ...(state.pageState[formIndex] as object), task: "Synthetische Touraufgabe", contactId: "7" };
+      renderGuidePage(Page);
+      state.guide.onStepChange("save");
+      renderGuidePage(Page);
+      expect(state.guide.steps.find((step: any) => step.key === "save").waitsForSuccess).toBe(true);
+      expect(state.guide.successSignal).toBeNull();
+      state.buttons.get(`${state.guide.guideId}-save`)!();
+      await vi.waitFor(() => expect(state.createTask).toHaveBeenCalledOnce());
+      await vi.waitFor(() => {
+        renderGuidePage(Page);
+        expect(state.guide.successSignal).toEqual(expect.any(Number));
+      });
+      expectNoDocumentSideEffects();
+      state.guide.onStepChange("overview");
+      expect(renderGuidePage(Page)).toContain(`data-klemmi-target="${state.guide.guideId}-overview"`);
+    }
+  );
 });

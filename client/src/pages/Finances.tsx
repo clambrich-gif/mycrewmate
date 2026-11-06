@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { useEventYear } from "@/contexts/YearContext";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
+import { KLEMMI_AUDIO_SCRIPTS } from "@/lib/klemmiAudio";
 import {
   STICKY_TABLE_CONTAINER_CLASS,
   STICKY_TABLE_HEADER_CLASS,
@@ -118,37 +119,52 @@ export default function Finances() {
       selector: '[data-klemmi-target="finances-values"]',
       eyebrow: "Klemmi zeigt’s",
       title: "Finanzen einfach im Blick behalten",
-      text: "Die Übersicht zeigt Einnahmen und Ausgaben pro Kategorie. Der Saldo wird automatisch berechnet. Diese Textführung verändert keine Daten.",
+      text: KLEMMI_AUDIO_SCRIPTS["finances-intro"],
       action: "Weiter",
     },
     ...(canWrite
       ? [
           {
             key: "dialog",
+            audioKey: "category",
             selector: '[data-klemmi-target="finances-category"]',
             eyebrow: "Kategorie pflegen",
             title: "Neue Kategorie im Dialog",
-            text: "„Neue Kategorie“ öffnet einen Dialog. Dort gibst du die Kategorie, Einnahmen, Ausgaben und optional eine erste Notiz ein. Erst „Speichern“ übernimmt die Angaben. Bestehende Kategorien änderst du über „Bearbeiten“.",
+            text: KLEMMI_AUDIO_SCRIPTS["finances-category"],
             action: "Weiter",
           },
         ]
       : []),
     {
       key: "notebook",
+      audioKey: canWrite ? "notebook" : "notebook-read",
       selector: '[data-klemmi-target="finances-values"]',
       eyebrow: "Notizen zur Kategorie",
-      title: "Das Notizbuch öffnen",
+      title: canWrite
+        ? "Absprachen im Notizbuch festhalten"
+        : "Notizen zur Kategorie ansehen",
       text: canWrite
-        ? "„Notizbuch“ öffnet den Verlauf der jeweiligen Kategorie. Neue Einträge werden mit Datum, Uhrzeit und deinem Namen ergänzt; bestehende Notizen bleiben erhalten. „Belege“ verwaltet PDFs separat und verändert keine Finanzwerte."
-        : "„Notizbuch“ öffnet die bisherigen Notizen der jeweiligen Kategorie. Mit deinem Lesezugriff kannst du den Verlauf ansehen, aber keine Einträge ergänzen oder Finanzwerte ändern.",
+        ? KLEMMI_AUDIO_SCRIPTS["finances-notebook"]
+        : KLEMMI_AUDIO_SCRIPTS["finances-notebook-read"],
+      action: "Belege erklären",
+    },
+    {
+      key: "receipts",
+      selector:
+        canWrite && rows.length > 0
+          ? '[data-klemmi-target="finances-receipts"]'
+          : '[data-klemmi-target="finances-values"]',
+      eyebrow: "Getrennte Rechnungsbelege",
+      title: "Rechnungen zur Kategorie ablegen",
+      text: KLEMMI_AUDIO_SCRIPTS["finances-receipts"],
       action: "Saldo zeigen",
     },
     {
       key: "balance",
       selector: '[data-klemmi-target="finances-balance"]',
       eyebrow: "Gesamtübersicht",
-      title: "Saldo prüfen",
-      text: "Der Saldo fasst die Einnahmen und Ausgaben aller Kategorien zusammen. Die Differenz zeigt den aktuellen finanziellen Stand.",
+      title: "Den Saldo gemeinsam prüfen",
+      text: KLEMMI_AUDIO_SCRIPTS["finances-balance"],
       action: "Fertig",
     },
   ];
@@ -184,6 +200,7 @@ export default function Finances() {
             variant="outline"
             size="sm"
             className="max-md:min-h-11"
+            data-klemmi-target="finances-receipts"
             onClick={() => setReceiptsId(row.id)}
             aria-label={`Belege für ${row.category} öffnen`}
           >
@@ -242,16 +259,15 @@ export default function Finances() {
           )}
         </div>
         <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
-          {/* The old audio describes inline edits. This updated tour is deliberately text-only. */}
           <KlemmiSurfaceGuide
             guideId="finances"
-            audioGuideId="finances-dialog-text"
-            voiceMuted
+            audioGuideId="finances"
             title="Finanzen verstehen"
-            introText="Kategorien, Dialoge, Notizbücher und Saldo einfach erklärt."
+            introText={KLEMMI_AUDIO_SCRIPTS["finances-intro"]}
             steps={guideSteps}
             successSignal={null}
-            completionText="Du kennst jetzt die Finanzübersicht und die passenden Dialoge. Es wurden keine Daten verändert."
+            completionTitle="Finanzen im Überblick!"
+            completionText={KLEMMI_AUDIO_SCRIPTS["finances-complete"]}
           />
           {canWrite && (
             <Button

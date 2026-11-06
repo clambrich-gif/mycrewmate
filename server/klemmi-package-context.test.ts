@@ -19,6 +19,8 @@ import {
   KLEMMI_CONTACTS_VOICE_PROFILE,
   KLEMMI_DONATIONS_AUDIO_IDS,
   KLEMMI_DONATIONS_VOICE_PROFILE,
+  KLEMMI_FINANCES_AUDIO_IDS,
+  KLEMMI_FINANCES_VOICE_PROFILE,
   KLEMMI_HELPERS_AUDIO_IDS,
   KLEMMI_HELPERS_VOICE_PROFILE,
   KLEMMI_MATERIALS_AUDIO_IDS,
@@ -319,8 +321,8 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     expect(KLEMMI_PUBLIC_DEMO_AUDIO_IDS.length).toBeGreaterThan(20);
     expect(KLEMMI_CONTACTS_AUDIO_IDS).toHaveLength(9);
     expect(KLEMMI_HELPERS_AUDIO_IDS).toHaveLength(23);
-    expect(KLEMMI_PREPARATION_AUDIO_IDS).toHaveLength(12);
-    expect(KLEMMI_POSTPROCESSING_AUDIO_IDS).toHaveLength(12);
+    expect(KLEMMI_PREPARATION_AUDIO_IDS).toHaveLength(13);
+    expect(KLEMMI_POSTPROCESSING_AUDIO_IDS).toHaveLength(13);
     expect(KLEMMI_MATERIALS_AUDIO_IDS).toEqual([
       "materials-intro",
       "materials-name",
@@ -452,6 +454,7 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
       ...KLEMMI_POSTPROCESSING_AUDIO_IDS,
       ...KLEMMI_MATERIALS_AUDIO_IDS,
       ...KLEMMI_DONATIONS_AUDIO_IDS,
+      ...KLEMMI_FINANCES_AUDIO_IDS,
     ]) {
       const asset = await readFile(
         path.join(root, "server/assets/klemmi-voice", `${id}.mp3`)
@@ -488,6 +491,7 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
             !contactsAudioIdSet.has(id) &&
             !helpersAudioIdSet.has(id) &&
             !donationsAudioIdSet.has(id) &&
+            !KLEMMI_FINANCES_AUDIO_IDS.includes(id as keyof typeof KLEMMI_AUDIO_VOICE_MANIFEST) &&
             !KLEMMI_PREPARATION_AUDIO_IDS.includes(id as keyof typeof KLEMMI_AUDIO_VOICE_MANIFEST) &&
             !KLEMMI_POSTPROCESSING_AUDIO_IDS.includes(id as keyof typeof KLEMMI_AUDIO_VOICE_MANIFEST) &&
             !KLEMMI_MATERIALS_AUDIO_IDS.includes(id as keyof typeof KLEMMI_AUDIO_VOICE_MANIFEST)
@@ -510,6 +514,16 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     expect(() => createKlemmiSpeechRequest(" ")).toThrow(
       "Klemmi-Sprechtext darf nicht leer sein."
     );
+  });
+
+  it("ordnet alle sieben aktiven Finanzaufnahmen ausschließlich Klemmi 2.0 und einer neuen Cache-Version zu", () => {
+    expect(KLEMMI_FINANCES_VOICE_PROFILE.generationProfileVersion).toBe("2.0");
+    expect(KLEMMI_FINANCES_AUDIO_IDS).toHaveLength(7);
+    for (const id of KLEMMI_FINANCES_AUDIO_IDS) {
+      expect(KLEMMI_AUDIO_VOICE_MANIFEST[id].voice).toBe("Klemmi-Stimme");
+      expect(klemmiAudioUrl(id)).toContain("20261106-klemmi-v2-finances-v1");
+    }
+    expect(KLEMMI_AUDIO_VOICE_MANIFEST["finances-values"].voice).toBe("Achird");
   });
 
   it("behält die Einsatzplanung in allen Produktstufen als Kernfunktion frei", async () => {
