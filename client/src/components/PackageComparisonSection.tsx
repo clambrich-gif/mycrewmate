@@ -10,7 +10,6 @@ import {
   ArrowLeftRight,
   Check,
   CheckCircle2,
-  Gem,
   Mail,
   Minus,
   Square,
@@ -18,7 +17,7 @@ import {
   VolumeX,
 } from "lucide-react";
 
-type ComparisonState = "included" | "limited" | "notIncluded" | "custom";
+type ComparisonState = "included" | "limited" | "notIncluded";
 type ComparisonPackageId = "event_pass" | "light" | "pro" | "enterprise";
 
 type ComparisonCell = {
@@ -29,6 +28,7 @@ type ComparisonCell = {
 type ComparisonRow = {
   group: string;
   capability: string;
+  description?: string;
   event_pass: ComparisonCell;
   light: ComparisonCell;
   pro: ComparisonCell;
@@ -99,25 +99,35 @@ export const PACKAGE_COMPARISON_ROWS: ComparisonRow[] = [
     group: "Grundlage",
     capability: "Veranstaltungsumfang",
     event_pass: { state: "limited", label: "1 Event" },
-    light: { state: "limited", label: "1 Haupt-Event" },
-    pro: { state: "limited", label: "bis 5 Events" },
-    enterprise: { state: "custom", label: "nach Vereinbarung" },
+    light: { state: "limited", label: "1 Haupt-Event / Veranstaltungsjahr" },
+    pro: { state: "limited", label: "bis 5 Events / Veranstaltungsjahr" },
+    enterprise: { state: "included", label: "Unbegrenzt" },
   },
   {
     group: "Grundlage",
     capability: "Helfer & Schichten",
     event_pass: { state: "limited", label: "bis 50 Helfer" },
     light: { state: "limited", label: "bis 150 Helfer" },
-    pro: { state: "included", label: "bis 350 / Event" },
-    enterprise: { state: "custom", label: "nach Bedarf" },
+    pro: { state: "limited", label: "bis 350 Helfer / Event" },
+    enterprise: { state: "included", label: "Unbegrenzt" },
   },
   {
     group: "Team",
     capability: "Persönliche Teamzugänge",
+    description: "Bei Pro zählen Co-Admins nicht zu den 14 Planungszugängen.",
     event_pass: { state: "notIncluded" },
     light: { state: "limited", label: "bis 5 Zugänge" },
-    pro: { state: "included", label: "Rollen & Co-Admins" },
-    enterprise: { state: "custom", label: "nach Größe" },
+    pro: { state: "limited", label: "bis 14 Planungszugänge + Co-Admins" },
+    enterprise: { state: "included", label: "Unbegrenzt" },
+  },
+  {
+    group: "Team",
+    capability: "Optionale Altersanzeige bei Helfern",
+    description: "Freiwilliges Geburtsdatum für die interne Altersanzeige.",
+    event_pass: { state: "notIncluded" },
+    light: { state: "notIncluded" },
+    pro: { state: "included" },
+    enterprise: { state: "included" },
   },
   {
     group: "Planung",
@@ -125,15 +135,15 @@ export const PACKAGE_COMPARISON_ROWS: ComparisonRow[] = [
     event_pass: { state: "limited", label: "Vorbereitung" },
     light: { state: "included" },
     pro: { state: "included" },
-    enterprise: { state: "custom", label: "eigene Abläufe" },
+    enterprise: { state: "included" },
   },
   {
     group: "Planung",
     capability: "Ansprechpartner & Orte",
     event_pass: { state: "notIncluded" },
     light: { state: "limited", label: "50 Ansprechpartner · 25 Orte" },
-    pro: { state: "included", label: "unbegrenzt" },
-    enterprise: { state: "custom", label: "erweiterbar" },
+    pro: { state: "included", label: "Unbegrenzt" },
+    enterprise: { state: "included", label: "Unbegrenzt" },
   },
   {
     group: "Planung",
@@ -141,7 +151,7 @@ export const PACKAGE_COMPARISON_ROWS: ComparisonRow[] = [
     event_pass: { state: "notIncluded" },
     light: { state: "included" },
     pro: { state: "included" },
-    enterprise: { state: "custom", label: "erweiterbar" },
+    enterprise: { state: "included" },
   },
   {
     group: "Planung",
@@ -149,7 +159,17 @@ export const PACKAGE_COMPARISON_ROWS: ComparisonRow[] = [
     event_pass: { state: "notIncluded" },
     light: { state: "notIncluded" },
     pro: { state: "included" },
-    enterprise: { state: "custom", label: "individuell" },
+    enterprise: { state: "included" },
+  },
+  {
+    group: "Planung",
+    capability: "Belege, Rechnungen & Dokumente",
+    description:
+      "Anhänge in Vor-/Nachbereitung und Finanzen – je nach persönlicher Berechtigung.",
+    event_pass: { state: "notIncluded" },
+    light: { state: "notIncluded" },
+    pro: { state: "included" },
+    enterprise: { state: "included" },
   },
   {
     group: "Vor Ort",
@@ -157,7 +177,7 @@ export const PACKAGE_COMPARISON_ROWS: ComparisonRow[] = [
     event_pass: { state: "notIncluded" },
     light: { state: "notIncluded" },
     pro: { state: "included" },
-    enterprise: { state: "custom", label: "Sonderansichten" },
+    enterprise: { state: "included" },
   },
   {
     group: "Kommunikation",
@@ -168,15 +188,47 @@ export const PACKAGE_COMPARISON_ROWS: ComparisonRow[] = [
       state: "included",
       label: "Chat, individuelle WhatsApp-Vorlagen & PDF",
     },
-    enterprise: { state: "custom", label: "eigene Vorlagen & Prozesse" },
+    enterprise: {
+      state: "included",
+      label: "Chat, individuelle WhatsApp-Vorlagen & PDF",
+    },
+  },
+  {
+    group: "Kommunikation",
+    capability: "Team-Notizen per E-Mail / WhatsApp weitergeben",
+    description: "Einzelne Notizen bewusst durch Administratoren weitergeben.",
+    event_pass: { state: "notIncluded" },
+    light: { state: "notIncluded" },
+    pro: { state: "included" },
+    enterprise: { state: "included" },
+  },
+  {
+    group: "Datensicherung",
+    capability: "JSON-Sicherung",
+    description: "Planungsdaten der aktuell gewählten Veranstaltung sichern.",
+    event_pass: { state: "limited", label: "Gewähltes Event (JSON)" },
+    light: { state: "limited", label: "Gewähltes Haupt-Event (JSON)" },
+    pro: { state: "included", label: "Projektstand des gewählten Events (JSON)" },
+    enterprise: {
+      state: "included",
+      label: "Projektstand des gewählten Events (JSON)",
+    },
+  },
+  {
+    group: "Datensicherung",
+    capability: "Excel-Import & -Export",
+    event_pass: { state: "notIncluded" },
+    light: { state: "notIncluded" },
+    pro: { state: "included" },
+    enterprise: { state: "included" },
   },
   {
     group: "Sicherheit",
     capability: "Schutz, Protokolle & Rechte",
     event_pass: { state: "limited", label: "Grundschutz" },
     light: { state: "included", label: "Rollen & Protokolle" },
-    pro: { state: "included", label: "vollständig" },
-    enterprise: { state: "custom", label: "Sonderprozesse" },
+    pro: { state: "included", label: "Rollen & Protokolle" },
+    enterprise: { state: "included", label: "Rollen & Protokolle" },
   },
 ];
 
@@ -191,23 +243,17 @@ function ComparisonCell({ cell }: { cell: ComparisonCell }) {
   }
 
   const config =
-    cell.state === "custom"
+    cell.state === "limited"
       ? {
-          icon: Gem,
-          className: "bg-orange-50 text-orange-800 ring-orange-100",
-          fallback: "Individuell",
+          icon: Check,
+          className: "bg-blue-50 text-blue-800 ring-blue-100",
+          fallback: "Enthalten",
         }
-      : cell.state === "limited"
-        ? {
-            icon: Check,
-            className: "bg-blue-50 text-blue-800 ring-blue-100",
-            fallback: "Enthalten",
-          }
-        : {
-            icon: CheckCircle2,
-            className: "bg-emerald-50 text-emerald-800 ring-emerald-100",
-            fallback: "Enthalten",
-          };
+      : {
+          icon: CheckCircle2,
+          className: "bg-emerald-50 text-emerald-800 ring-emerald-100",
+          fallback: "Enthalten",
+        };
   const Icon = config.icon;
 
   return (
@@ -498,6 +544,11 @@ export function PackageComparisonSection({
                       <span className="mt-1 block text-sm font-bold text-slate-700">
                         {row.capability}
                       </span>
+                      {row.description && (
+                        <span className="mt-1 block text-xs font-normal leading-5 text-slate-500">
+                          {row.description}
+                        </span>
+                      )}
                     </th>
                     {PACKAGES.map(packageItem => (
                       <td
@@ -533,10 +584,29 @@ export function PackageComparisonSection({
             <span>
               Auf dem Smartphone nach links und rechts wischen, um alle Pakete
               zu vergleichen. Mit der Tastatur zuerst in die Tabelle springen
-              und dann die Pfeiltasten verwenden. Enterprise-Erweiterungen
-              werden individuell und transparent abgestimmt.
+              und dann die Pfeiltasten verwenden.
             </span>
           </p>
+          <div
+            className="space-y-2 border-t border-slate-100 px-5 py-4 text-xs leading-5 text-slate-600"
+            data-package-comparison-notes
+          >
+            <p>
+              JSON und Excel sichern Planungsdaten, nicht die hochgeladenen Dateien.
+              Finanzbelege lassen sich getrennt als ZIP sichern.
+            </p>
+            <p>
+              Team-Notizen werden nur nach eigener Aktion weitergegeben. E-Mails
+              werden bewusst ausgelöst; WhatsApp bereitet einzelne Chats vor –
+              du sendest dort selbst, kein automatischer WhatsApp-Versand.
+            </p>
+            <p>
+              Enterprise enthält die aufgeführten Kernfunktionen. Individuelle
+              Erweiterungen und Konfigurationen werden gesondert nach Vereinbarung
+              abgestimmt; individuelle Entwicklungsleistungen sind nicht pauschal
+              enthalten.
+            </p>
+          </div>
         </div>
         {currentPackageId && (
           <KlemmiPackageTip currentPackageId={currentPackageId} />

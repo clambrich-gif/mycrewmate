@@ -45,6 +45,7 @@ type PilotPackage = {
   eyebrow: string;
   title: string;
   description: string;
+  limits: string;
   features: string[];
   icon: LucideIcon;
   accent: string;
@@ -58,6 +59,7 @@ const PILOT_PACKAGES: PilotPackage[] = [
     title: "Für das Fest, das gut gelingen soll.",
     description:
       "Für Weihnachtsfeier, Helferfest, Rennen, Turnier oder einen einzelnen Veranstaltungstag.",
+    limits: "1 Veranstaltung · bis 50 Helfer · keine persönlichen Zugänge",
     features: ["Helfer und Schichten", "Aufgaben und Vorbereitung", "Klarer Ablauf für einen Anlass"],
     icon: CalendarDays,
     accent: "border-orange-200 bg-orange-50/60",
@@ -69,6 +71,7 @@ const PILOT_PACKAGES: PilotPackage[] = [
     title: "Für Vereine mit einem festen Ablauf.",
     description:
       "Für ein wiederkehrendes Vereinsfest und ein kleines Planungsteam, das jedes Jahr leichter starten möchte.",
+    limits: "1 Haupt-Event / Veranstaltungsjahr · bis 150 Helfer · 5 persönliche Planungsteamzugänge",
     features: ["Persönliche Zugänge", "Helfer, Material und Orte", "Vor- und Nachbereitung"],
     icon: UsersRound,
     accent: "border-sky-200 bg-sky-50/60",
@@ -80,7 +83,8 @@ const PILOT_PACKAGES: PilotPackage[] = [
     title: "Für das große Team hinter dem Event.",
     description:
       "Für Radsportfeste, Mehrtagesevents und Vereine mit vielen Helfern, Standorten und Abstimmungen.",
-    features: ["Rollen und Teamkommunikation", "Karte, Standorte und GPX", "Material, Spenden und Finanzen"],
+    limits: "Bis 5 Events / Veranstaltungsjahr · bis 350 Helfer / Event · 14 persönliche Planungsteamzugänge + Co-Admins",
+    features: ["Rollen, Live-Chat und Teamkommunikation", "Karte, Standorte und GPX", "Material, Spenden und Finanzen", "Dokumente & PDF-Finanzbelege inklusive"],
     icon: MapPinned,
     accent: "border-blue-200 bg-blue-50/60",
     iconClass: "bg-blue-100 text-blue-700",
@@ -91,7 +95,8 @@ const PILOT_PACKAGES: PilotPackage[] = [
     title: "Für gemeinsame Strukturen mit eigenen Teams.",
     description:
       "Für Verbände, Dachvereine und große Vereine mit mehreren eigenständig planenden Bereichen.",
-    features: ["Getrennte Vereinsbereiche", "Gemeinsame Standards", "Individuelle Einrichtung"],
+    limits: "Unbegrenzte Events, Helfer je Event und persönliche Planungsteamzugänge",
+    features: ["Alle Pro-Funktionen inkl. Dokumenten & PDF-Belegen", "Getrennte Vereinsbereiche & gemeinsame Standards", "Individuelle Anpassungen separat vereinbart"],
     icon: ShieldCheck,
     accent: "border-violet-200 bg-violet-50/60",
     iconClass: "bg-violet-100 text-violet-700",
@@ -125,7 +130,7 @@ const PILOT_FAQS = [
   {
     question: "Wie lange kann unser Verein testen?",
     answer:
-      "Das stimmen wir passend zu eurem Anlass ab. Für eine Weihnachtsfeier kann es ein kurzer Zeitraum sein; bei einem großen Event kann die Nutzung auch das vereinbarte Veranstaltungsjahr 2027 begleiten.",
+      "Pilotanfragen sind bis 31.12.2026 möglich; das ist nicht das allgemeine Ende der Testnutzung. Den kostenlosen Zeitraum stimmen wir passend zu eurem Anlass ab. Für eine Weihnachtsfeier kann es ein kurzer Zeitraum sein; bei einem großen Event kann die Nutzung auch das vereinbarte Veranstaltungsjahr 2027 begleiten.",
   },
   {
     question: "Müssen wir danach weitermachen?",
@@ -164,7 +169,7 @@ function PilotExplainerVideo() {
               <Play className="size-4 text-orange-700" aria-hidden="true" />
               Startet nur auf Klick
             </span>
-            <span>Mit Ton · 43 Sekunden · Pilotanmeldung bis 31.12.2026</span>
+            <span>Mit Ton · 43 Sekunden · Pilotanfragen bis 31.12.2026</span>
           </div>
           <a
             href="#pilot-anfrage"
@@ -570,7 +575,7 @@ export default function PilotHomepageDraft() {
             Nicht erst nach dem Event merken, was gefehlt hat.
           </h2>
           <p className="mt-4 text-lg leading-8 text-slate-600">
-            MyCrewMate bringt Helfer, Aufgaben, Schichten, Orte und wichtige Hinweise in einen gemeinsamen Ablauf. So bleibt das Wissen im Verein – auch wenn Teams wechseln.
+            MyCrewMate bringt Helfer, Aufgaben, Schichten, Orte und wichtige Hinweise in einen gemeinsamen Ablauf. Aufgaben-Logbücher bewahren das Wissen im Verein – auch wenn Teams wechseln. Ab Pro bleiben Dokumente und PDF-Belege direkt bei Aufgaben in Vor- und Nachbereitung sowie bei Finanzkategorien auffindbar, je nach persönlicher Berechtigung.
           </p>
         </div>
         <div className="mt-10 grid gap-4 md:grid-cols-3">
@@ -659,6 +664,7 @@ export default function PilotHomepageDraft() {
                 <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">{pilotPackage.name}</h3>
                 <p className="mt-3 text-lg font-bold leading-6 text-slate-800">{pilotPackage.title}</p>
                 <p className="mt-3 text-sm leading-6 text-slate-600">{pilotPackage.description}</p>
+                <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">{pilotPackage.limits}</p>
                 <ul className="mt-5 space-y-2 text-sm leading-5 text-slate-700">
                   {pilotPackage.features.map((feature) => (
                     <li key={feature} className="flex gap-2"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" aria-hidden="true" />{feature}</li>

@@ -169,6 +169,7 @@ const OFFERS: Offer[] = [
       "Gemeinsamer Orga- und Massenzugang für das Organisationsteam",
       "Bis zu 50 Helfer-Datensätze als einfache Planeinträge",
       "Tagesverfügbarkeiten, Schichten und kompakte Aufgabenübersicht",
+      "JSON-Sicherung der ausgewählten aktiven Veranstaltung für eure Planungsdaten",
       "Standard-PDF-Listen, Hilfebereich und Schulungsvideo",
       "Grundschutz mit Notfallsperrung sowie System- und Sicherheitsprotokoll",
     ],
@@ -191,7 +192,8 @@ const OFFERS: Offer[] = [
     description:
       "Der klare digitale Ablauf für euer jährliches Event und ein kleines festes Planungsteam.",
     highlights: [
-      "Bis 150 Helfer & 5 persönliche Zugänge",
+      "1 Haupt-Event / Veranstaltungsjahr · bis 150 Helfer",
+      "5 persönliche Planungsteamzugänge",
       "Bis 50 Ansprechpartner & 25 Orte",
       "Helfer, Schichten, Vor- & Nachbereitung",
       "Material, PDF & jedes Jahr frei entscheiden",
@@ -213,15 +215,16 @@ const OFFERS: Offer[] = [
       {
         icon: CalendarCheck2,
         title: "Wiederkehrend entspannt",
-        text: "Der bewährte Ablauf bleibt sichtbar, auch wenn das Team sich verändert.",
+        text: "Aufgaben-Logbücher bewahren Erfahrungen für das nächste Jahr – auch wenn das Team sich verändert.",
       },
     ],
     included: [
-      "Eine jährliche Hauptveranstaltung mit Vorbereitung, Eventtag und Nachbereitung",
+      "Eine Hauptveranstaltung je Veranstaltungsjahr mit Vorbereitung, Eventtag und Nachbereitung",
       "Bis zu 150 Helfer-Datensätze und bis zu fünf persönliche Teamzugänge",
       "Bis zu 50 Ansprechpartner und 25 organisatorische Orte",
       "Ansprechpartner-, Helfer-, Verfügbarkeits- und Schichtplanung",
       "Vorbereitung, Nachbereitung und Materialplanung",
+      "JSON-Sicherung der ausgewählten aktiven Veranstaltung für eure Planungsdaten",
       "Standard-PDFs, persönliche Helfer-PDFs und eine WhatsApp-Standardaktion",
       "Sichere Aktivierungslinks, Rollen- und Sicherheitsprotokolle",
     ],
@@ -242,14 +245,15 @@ const OFFERS: Offer[] = [
     description:
       "Die volle Planungstiefe für Teams, bei denen Übersicht, Kommunikation und Sicherheit zählen.",
     highlights: [
-      "Bis 5 Veranstaltungen pro Jahr",
-      "Persönliche Zugänge, Rollen & Live-Chat",
+      "Bis 5 Events / Veranstaltungsjahr · bis 350 Helfer / Event",
+      "14 persönliche Planungsteamzugänge + Co-Admins, Rollen & Live-Chat",
       "GPS/GPX, Material, Spenden & Finanzen",
       "WhatsApp, PDF, Excel & Protokolle",
+      "Dokumente & PDF-Finanzbelege inklusive",
     ],
     detailTitle: "Planen, das sich leicht anfühlt.",
     detailText:
-      "Pro verbindet alles, was ein aktives Orga-Team wirklich braucht: persönliche Zugänge, Helfer, Schichten, Karten, Strecken, Material, Spenden, Kommunikation und sichere Protokolle. Jedes Teammitglied sieht nur die Bereiche, die zu seiner Aufgabe passen – und alle arbeiten am selben aktuellen Stand.",
+      "Pro verbindet alles, was ein aktives Orga-Team wirklich braucht: persönliche Zugänge, Helfer, Schichten, Karten, Strecken, Material, Spenden, Kommunikation und sichere Protokolle. Dokumente und PDF-Belege bleiben direkt bei der passenden Aufgabe oder Finanzkategorie auffindbar – je nach persönlicher Berechtigung. Alle arbeiten am selben aktuellen Stand.",
     detailBenefits: [
       {
         icon: MessageCircle,
@@ -264,16 +268,20 @@ const OFFERS: Offer[] = [
       {
         icon: Target,
         title: "Von Anfang bis Abbau",
-        text: "Spenden, Finanzen, Genehmigungen und Nachbereitung bleiben nachvollziehbar verbunden.",
+        text: "Spenden, Finanzen, Genehmigungen und Aufgaben-Logbücher halten Abläufe und Vereinswissen nachvollziehbar zusammen.",
       },
     ],
     included: [
-      "Bis zu fünf Veranstaltungen pro Jahr und bis zu 350 Helfer je Veranstaltung",
-      "Hauptadmin, Co-Admins und bis zu 14 weitere persönliche Planungsteam-Zugänge",
+      "Bis zu fünf Veranstaltungen je Veranstaltungsjahr und bis zu 350 Helfer je Veranstaltung",
+      "Hauptadmin und Co-Admins zusätzlich zu bis zu 14 persönlichen Planungsteamzugängen; Co-Admins zählen nicht gegen diese 14",
       "Alle Kernmodule: Ansprechpartner, Helfer, Einsatzplan, Vorbereitung, Nachbereitung, Material, Spenden und Finanzen",
+      "Dokumente an Aufgaben in Vor- und Nachbereitung: PDF, JPEG und Word (DOC/DOCX), höchstens 5 MiB je Datei",
+      "PDF-Finanzbelege hochladen, finden und herunterladen: nur PDF, höchstens 5 MiB je Datei – zur Veranstaltungsübersicht, nicht als Buchhaltung",
       "Orte, Standorte, GPS-Punkte, Kartenansicht sowie GPX-Strecken",
-      "Live-Chat, persönliche Helfer-PDFs und zwei eventbezogene WhatsApp-Vorlagen",
-      "Marketing, Genehmigungen, Sicherheitsplanung sowie vollständiger Excel-Import/-Export",
+      "Optionale Altersanzeige für passende Helfereinsätze aus einem freiwillig eingetragenen Geburtsdatum",
+      "Live-Chat, persönliche Helfer-PDFs, Buffet-PDFs und Kärtchen sowie zwei eventbezogene WhatsApp-Vorlagen",
+      "Einzelne Teamnotizen gezielt an Ansprechpartner per E-Mail oder als vorbereitete WhatsApp-Nachricht für einen Einzelchat weitergeben – WhatsApp versendet ihr selbst",
+      "Marketing, Genehmigungen, Sicherheitsplanung sowie Excel-Import/-Export und JSON-Sicherung der Planungsdaten der ausgewählten Veranstaltung; hochgeladene Dateien sind nicht enthalten",
     ],
     nextStep:
       "Für mehrere Organisationen, besondere Freigaben oder individuelle Oberflächen kann Pro auf Enterprise erweitert werden – ohne die bestehende Planung zu verlieren.",
@@ -295,19 +303,20 @@ const OFFERS: Offer[] = [
     description:
       "Der Rahmen für Teams, die MyCrewMate an ihren echten Ablauf anpassen lassen möchten.",
     highlights: [
-      "Pro-Funktionsumfang plus Konfiguration",
-      "Mehrveranstaltungs- & Verbandslösungen",
+      "Unbegrenzte Events, Helfer & persönliche Planungsteamzugänge",
+      "Alles aus Pro inkl. Dokumenten & PDF-Belegen",
+      "Individuelle Anpassungen separat vereinbart",
       "Persönliche Einführung & Begleitung",
-      "Sonderprozesse, Support & KI vorbereitbar",
+      "Verbandslösungen, Support & KI vorbereitbar",
     ],
     detailTitle: "Euer Ablauf. Eure Oberfläche.",
     detailText:
-      "Enterprise beginnt dort, wo Standardsoftware aufhört. Gemeinsam übersetzen wir eure Abläufe in eine sichere, verständliche MyCrewMate-Lösung: mit passenden Feldern, individuellen Vorlagen, besonderen Freigabeschritten und persönlicher Begleitung.",
+      "Enterprise enthält alle Pro-Funktionen mit unbegrenzten Veranstaltungen, Helfern je Event und persönlichen Planungsteamzugängen. Dokumente und PDF-Finanzbelege bleiben auch hier je nach persönlicher Berechtigung zugänglich. Gemeinsam übersetzen wir eure Abläufe in eine sichere, verständliche MyCrewMate-Lösung; individuelle Felder, Vorlagen und Freigabeschritte werden separat nach Umfang vereinbart.",
     detailBenefits: [
       {
         icon: Wrench,
         title: "Passt zu euch",
-        text: "Zusätzliche Felder, Spendenarten oder Nachbereitungen werden an euren Ablauf angepasst.",
+        text: "Zusätzliche Felder, Spendenarten oder Nachbereitungen werden nach separater Vereinbarung an euren Ablauf angepasst.",
       },
       {
         icon: HandHeart,
@@ -321,8 +330,11 @@ const OFFERS: Offer[] = [
       },
     ],
     included: [
-      "Voller Pro-Funktionsumfang mit Mengen und mehreren Veranstaltungen nach Vereinbarung",
-      "Individuelle Oberflächen-, Feld- und Prozessanpassungen nach abgestimmtem Leistungsumfang",
+      "Voller Pro-Funktionsumfang mit unbegrenzten Veranstaltungen, Helfern je Event und persönlichen Planungsteamzugängen",
+      "Dokumente an Aufgaben in Vor- und Nachbereitung wie in Pro: PDF, JPEG und Word (DOC/DOCX), höchstens 5 MiB je Datei",
+      "PDF-Finanzbelege wie in Pro: nur PDF, höchstens 5 MiB je Datei – zur Veranstaltungsübersicht, nicht als Buchhaltung",
+      "Excel-Import/-Export und JSON-Sicherung der Planungsdaten der ausgewählten Veranstaltung wie in Pro; hochgeladene Dateien sind nicht enthalten",
+      "Individuelle Oberflächen-, Feld- und Prozessanpassungen nach separat vereinbartem Leistungsumfang",
       "Eigene PDF- und Organisationsvorlagen sowie begleitete Datenübernahme aus Excel-Listen",
       "Erweitertes Onboarding und priorisierte Support-Begleitung im vereinbarten Rahmen",
       "Mehrveranstaltungs- und Verbandslösungen auf Grundlage der Mandantentrennung",
@@ -601,7 +613,7 @@ export default function OfferDemo() {
           href="/pilot#pilot-video"
           className="inline-flex items-center gap-1.5 rounded-md underline-offset-2 hover:text-orange-800 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
         >
-          Pilotanfragen bis 31.12.2026 · Kostenlos am eigenen Event testen
+          Pilotanfragen bis 31.12.2026 · Kostenlos testen im vereinbarten Zeitraum
           <ArrowRight className="size-4" aria-hidden="true" />
         </a>
       </div>
@@ -932,8 +944,8 @@ export default function OfferDemo() {
             <p className="mt-4 text-base leading-7 text-slate-600">
               Einfach starten, gemeinsam organisieren, vollständig steuern oder
               individuell wachsen: Jedes Paket schafft den passenden nächsten
-              Schritt. Bis 31.12.2026 könnt ihr die passende Umgebung im
-              kostenlosen Pilotprogramm am eigenen Anlass testen.
+              Schritt. Pilotanfragen bis 31.12.2026; kostenlos testen im
+              vereinbarten Zeitraum am eigenen Anlass – auch 2027, wenn so vereinbart.
             </p>
           </div>
           <div className="mx-auto mt-12 grid max-w-7xl gap-5 lg:grid-cols-4 lg:items-stretch">
@@ -1129,8 +1141,8 @@ export default function OfferDemo() {
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm leading-5 sm:justify-end">
             <p className="max-w-xl">
-              Reguläre Preise ab 01.01.2027 · Pilotprogramm bis 31.12.2026 ·
-              keine Bestellung auf dieser Seite.
+              Reguläre Preise ab 01.01.2027 · Pilotanfragen bis 31.12.2026 ·
+              kostenlos testen im vereinbarten Zeitraum · keine Bestellung auf dieser Seite.
             </p>
             <a
               className="rounded-sm font-semibold text-slate-700 underline-offset-2 hover:text-blue-700 hover:underline focus-visible:outline-none"
